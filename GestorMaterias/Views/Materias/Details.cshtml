@@ -1,0 +1,90 @@
+@model GestorMaterias.Models.Materia
+
+@{
+    ViewData["Title"] = "Detalles de Materia";
+    var estudiantes = ViewBag.Estudiantes as List<GestorMaterias.Models.Estudiante>;
+}
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Información de la Materia</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <dl class="row">
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Nombre)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Nombre)</dd>
+
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Descripcion)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Descripcion)</dd>
+
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Creditos)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Creditos)</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl class="row">
+                    <dt class="col-sm-4">Profesor</dt>
+                    <dd class="col-sm-8">@Model.Profesor?.Nombre</dd>
+
+                    <dt class="col-sm-4">Email del Profesor</dt>
+                    <dd class="col-sm-8">@Model.Profesor?.Email</dd>
+
+                    <dt class="col-sm-4">Estudiantes Inscritos</dt>
+                    <dd class="col-sm-8">@(estudiantes?.Count ?? 0)</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        @if (User.IsInRole("Administrador"))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Editar</a>
+        }
+        <a asp-action="Index" class="btn btn-secondary">Volver al Listado</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Estudiantes Inscritos</h4>
+            <span class="badge bg-light text-dark">Total: @(estudiantes?.Count ?? 0)</span>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (estudiantes != null && estudiantes.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-info">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var estudiante in estudiantes)
+                        {
+                            <tr>
+                                <td>@estudiante.Nombre</td>
+                                <td>@estudiante.Email</td>
+                                <td>
+                                    <a asp-controller="Estudiantes" asp-action="Details" asp-route-id="@estudiante.Id" class="btn btn-sm btn-info">Ver Estudiante</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                Esta materia no tiene estudiantes inscritos.
+            </div>
+        }
+    </div>
+</div>

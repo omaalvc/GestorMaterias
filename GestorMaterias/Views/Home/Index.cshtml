@@ -1,8 +1,202 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Inicio";
+    var isAuthenticated = User.Identity.IsAuthenticated;
+    var isAdmin = User.IsInRole("Administrador");
+    var estudianteId = User.FindFirst("EstudianteId")?.Value;
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Bienvenido al Sistema de Gestión de Materias</h1>
+    <p class="lead">Plataforma para la gestión de materias, profesores y estudiantes de la universidad.</p>
+</div>
+
+@if (!isAuthenticated)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 text-center">
+                    <h3>¿Ya tienes una cuenta?</h3>
+                    <p>Inicia sesión para acceder al sistema</p>
+                    <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg">Iniciar Sesión</a>
+                </div>
+                <div class="col-md-6 text-center">
+                    <h3>¿Eres nuevo?</h3>
+                    <p>Regístrate para inscribirte en materias</p>
+                    <a asp-controller="Account" asp-action="Register" class="btn btn-success btn-lg">Registrarse</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Materias</h5>
+            </div>
+            <div class="card-body">
+                <p>Explora el catálogo de materias disponibles en la universidad.</p>
+                <ul>
+                    <li>Cursos en diferentes áreas de conocimiento</li>
+                    <li>Información sobre profesores y horarios</li>
+                    <li>Detalles sobre créditos y requisitos</li>
+                </ul>
+            </div>
+            <div class="card-footer">
+                <a asp-controller="Materias" asp-action="Index" class="btn btn-primary">Ver Materias</a>
+            </div>
+        </div>
+    </div>
+
+    @if (isAuthenticated && !isAdmin && !string.IsNullOrEmpty(estudianteId))
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Mis Inscripciones</h5>
+                </div>
+                <div class="card-body">
+                    <p>Gestiona tus inscripciones y materias actuales.</p>
+                    <ul>
+                        <li>Ver materias en las que estás inscrito</li>
+                        <li>Consultar información de compañeros</li>
+                        <li>Eliminar inscripciones si es necesario</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a asp-controller="Registros" asp-action="PorEstudiante" asp-route-id="@estudianteId" class="btn btn-success">Mis Inscripciones</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Inscribirme</h5>
+                </div>
+                <div class="card-body">
+                    <p>Explora e inscríbete en nuevas materias.</p>
+                    <ul>
+                        <li>Materias disponibles para inscripción</li>
+                        <li>Máximo 3 materias por estudiante</li>
+                        <li>Cada materia equivale a 3 créditos</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a asp-controller="Registros" asp-action="MateriasDisponibles" asp-route-id="@estudianteId" class="btn btn-info">Inscribirme</a>
+                </div>
+            </div>
+        </div>
+    }
+    else if (isAuthenticated && isAdmin)
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Gestión de Profesores</h5>
+                </div>
+                <div class="card-body">
+                    <p>Administra el directorio de profesores.</p>
+                    <ul>
+                        <li>Añadir nuevos profesores al sistema</li>
+                        <li>Editar información de profesores existentes</li>
+                        <li>Asignar materias a los profesores</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a asp-controller="Profesores" asp-action="Index" class="btn btn-warning">Gestionar Profesores</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Gestión de Estudiantes</h5>
+                </div>
+                <div class="card-body">
+                    <p>Administra los estudiantes del sistema.</p>
+                    <ul>
+                        <li>Ver listado completo de estudiantes</li>
+                        <li>Inscribir estudiantes en materias</li>
+                        <li>Gestionar inscripciones existentes</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a asp-controller="Estudiantes" asp-action="Index" class="btn btn-secondary">Gestionar Estudiantes</a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Profesores</h5>
+                </div>
+                <div class="card-body">
+                    <p>Conoce nuestros profesores y sus especialidades.</p>
+                    <ul>
+                        <li>Información de contacto</li>
+                        <li>Materias que imparten</li>
+                        <li>Trayectoria académica</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a asp-controller="Profesores" asp-action="Index" class="btn btn-info">Ver Profesores</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Regístrate Ahora</h5>
+                </div>
+                <div class="card-body">
+                    <p>Crea tu cuenta para acceder a todas las funcionalidades.</p>
+                    <ul>
+                        <li>Inscripción en materias</li>
+                        <li>Seguimiento de tus cursos</li>
+                        <li>Gestión académica personalizada</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a asp-controller="Account" asp-action="Register" class="btn btn-success">Registrarme</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Sobre el Sistema</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Características Principales</h4>
+                <ul>
+                    <li>Catálogo completo de materias académicas</li>
+                    <li>Gestión de inscripciones de estudiantes</li>
+                    <li>Directorio de profesores con materias asignadas</li>
+                    <li>Control de carga académica (máximo 3 materias por estudiante)</li>
+                    <li>Validación automática de reglas de inscripción</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h4>Reglas del Sistema</h4>
+                <ul>
+                    <li>Cada materia tiene un valor de 3 créditos</li>
+                    <li>Un estudiante puede inscribir máximo 3 materias</li>
+                    <li>Un estudiante no puede tomar dos materias con el mismo profesor</li>
+                    <li>Un profesor puede impartir máximo 2 materias</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>

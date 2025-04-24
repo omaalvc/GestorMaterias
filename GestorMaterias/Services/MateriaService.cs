@@ -17,6 +17,7 @@ namespace GestorMaterias.Services
         {
             return await _context.Materias
                 .Include(m => m.Profesor)
+                .Include(m => m.Registros)
                 .ToListAsync();
         }
 
@@ -24,6 +25,8 @@ namespace GestorMaterias.Services
         {
             return await _context.Materias
                 .Include(m => m.Profesor)
+                .Include(m => m.Registros)
+                    .ThenInclude(r => r.Estudiante)
                 .FirstOrDefaultAsync(m => m.Id == id);
         }
 
@@ -31,74 +34,123 @@ namespace GestorMaterias.Services
         {
             return await _context.Materias
                 .Where(m => m.ProfesorId == profesorId)
+                .Include(m => m.Registros)
                 .ToListAsync();
         }
 
         public async Task<(bool Success, string Message)> CrearMateria(Materia materia)
         {
-            // Validar que el profesor pueda impartir otra materia
-            if (!await ProfesorPuedeImpartirMasMateria(materia.ProfesorId))
-                return (false, "El profesor ya imparte el máximo de 2 materias permitidas.");
+            try
+            {
+                // Verificar si el nombre de materia ya existe
+                if (await _context.Materias.AnyAsync(m => m.Nombre.ToLower() == materia.Nombre.ToLower()))
+                {
+                    return (false, "Ya existe una materia con ese nombre");
+                }
 
-            // Validar que la materia tenga 3 créditos según el requerimiento
-            materia.Creditos = 3;
+                // Verificar si el profesor puede impartir otra materia
+                if (materia.ProfesorId > 0 && !await ProfesorPuedeImpartirMasMateria(materia.ProfesorId))
+                {
+                    return (false, "El profesor ya tiene el máximo de materias permitidas");
+                }
 
-            _context.Materias.Add(materia);
-            await _context.SaveChangesAsync();
+                // Asignar créditos predeterminados
+                materia.Creditos = 3;
 
-            return (true, "Materia creada correctamente.");
+                _context.Materias.Add(materia);
+                await _context.SaveChangesAsync();
+                return (true, "Materia creada con éxito");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error al crear la materia: {ex.Message}");
+            }
         }
 
         public async Task<(bool Success, string Message)> ActualizarMateria(Materia materia)
         {
-            var materiaExistente = await _context.Materias.FindAsync(materia.Id);
-            if (materiaExistente == null)
-                return (false, "Materia no encontrada.");
-
-            // Si el profesor cambió, validar que el nuevo profesor pueda impartir otra materia
-            if (materiaExistente.ProfesorId != materia.ProfesorId)
+            try
             {
-                if (!await ProfesorPuedeImpartirMasMateria(materia.ProfesorId))
-                    return (false, "El profesor ya imparte el máximo de 2 materias permitidas.");
+                // Verificar si la materia existe
+                var materiaExistente = await _context.Materias.FindAsync(materia.Id);
+                if (materiaExistente == null)
+                {
+                    return (false, "La materia no existe");
+                }
+
+                // Verificar duplicados de nombre si el nombre ha cambiado
+                if (materiaExistente.Nombre != materia.Nombre && 
+                    await _context.Materias.AnyAsync(m => m.Nombre.ToLower() == materia.Nombre.ToLower() && m.Id != materia.Id))
+                {
+                    return (false, "Ya existe otra materia con ese nombre");
+                }
+
+                // Verificar si el profesor puede impartir otra materia (si ha cambiado de profesor)
+                if (materia.ProfesorId > 0 && 
+                    materiaExistente.ProfesorId != materia.ProfesorId && 
+                    !await ProfesorPuedeImpartirMasMateria(materia.ProfesorId))
+                {
+                    return (false, "El profesor ya tiene el máximo de materias permitidas");
+                }
+
+                // Actualizar propiedades
+                materiaExistente.Nombre = materia.Nombre;
+                materiaExistente.Descripcion = materia.Descripcion;
+                materiaExistente.ProfesorId = materia.ProfesorId;
+                // Los créditos siempre son 3
+
+                await _context.SaveChangesAsync();
+                return (true, "Materia actualizada con éxito");
             }
-
-            // Mantener siempre 3 créditos según el requerimiento
-            materia.Creditos = 3;
-
-            materiaExistente.Nombre = materia.Nombre;
-            materiaExistente.Descripcion = materia.Descripcion;
-            materiaExistente.ProfesorId = materia.ProfesorId;
-            
-            await _context.SaveChangesAsync();
-
-            return (true, "Materia actualizada correctamente.");
+            catch (Exception ex)
+            {
+                return (false, $"Error al actualizar la materia: {ex.Message}");
+            }
         }
 
         public async Task<(bool Success, string Message)> EliminarMateria(int id)
         {
-            var materia = await _context.Materias
-                .Include(m => m.Registros)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            try
+            {
+                var materia = await _context.Materias
+                    .Include(m => m.Registros)
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (materia == null)
-                return (false, "Materia no encontrada.");
+                if (materia == null)
+                {
+                    return (false, "La materia no existe");
+                }
 
-            // Verificar si hay estudiantes inscritos en la materia
-            if (materia.Registros.Any())
-                return (false, "No se puede eliminar la materia porque tiene estudiantes inscritos.");
+                // Verificar si hay estudiantes inscritos
+                if (materia.Registros != null && materia.Registros.Any(r => r.Estado == "Activo"))
+                {
+                    return (false, "No se puede eliminar la materia porque tiene estudiantes inscritos");
+                }
 
-            _context.Materias.Remove(materia);
-            await _context.SaveChangesAsync();
-
-            return (true, "Materia eliminada correctamente.");
+                _context.Materias.Remove(materia);
+                await _context.SaveChangesAsync();
+                return (true, "Materia eliminada con éxito");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error al eliminar la materia: {ex.Message}");
+            }
         }
 
         public async Task<bool> ProfesorPuedeImpartirMasMateria(int profesorId)
         {
-            // Un profesor solo puede impartir máximo 2 materias según los requerimientos
+            // Verificar si existe el profesor
+            var profesor = await _context.Profesores.FindAsync(profesorId);
+            if (profesor == null)
+            {
+                return false;
+            }
+
+            // Contar cuántas materias imparte actualmente
             var cantidadMaterias = await _context.Materias
                 .CountAsync(m => m.ProfesorId == profesorId);
 
+            // Un profesor puede impartir máximo 2 materias
             return cantidadMaterias < 2;
         }
     }

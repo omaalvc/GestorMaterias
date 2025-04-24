@@ -4,6 +4,7 @@ using GestorMaterias.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace GestorMaterias.Controllers
 {
@@ -148,6 +149,7 @@ namespace GestorMaterias.Controllers
         }
 
         // GET: Registros/PorEstudiante/5
+        [HttpGet("PorEstudiante/{id}")]
         public async Task<IActionResult> PorEstudiante(int? id)
         {
             if (id == null)
@@ -220,6 +222,28 @@ namespace GestorMaterias.Controllers
             }
             
             return RedirectToAction("Details", "Estudiantes", new { id = estudianteId });
+        }
+
+        // GET: Registros/PorEstudiante
+        [HttpPost("PorEstudiantes")]
+        public async Task<IActionResult> PorEstudianteDetalle()
+        {
+            // Obtener el ID del estudiante actual desde la sesión de usuario
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            // Si no hay usuario autenticado o no es un estudiante, redirigir al login
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            // Buscar los registros (inscripciones) del estudiante actual
+            var inscripciones = await _context.Registros
+                .Include(i => i.Materia)
+                .Where(i => i.EstudianteId == userId)
+                .ToListAsync();
+
+            return View(inscripciones);
         }
     }
 }

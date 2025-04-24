@@ -1,0 +1,61 @@
+@model GestorMaterias.Models.Registro
+
+@{
+    ViewData["Title"] = "Nueva Inscripción";
+}
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Inscribir Estudiante en Materia</h4>
+    </div>
+    <div class="card-body">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="EstudianteId" class="control-label">Estudiante</label>
+                        <select asp-for="EstudianteId" class="form-select" asp-items="ViewBag.Estudiantes">
+                            <option value="">-- Seleccione un Estudiante --</option>
+                        </select>
+                        <span asp-validation-for="EstudianteId" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="MateriaId" class="control-label">Materia</label>
+                        <select asp-for="MateriaId" class="form-select" asp-items="ViewBag.Materias">
+                            <option value="">-- Seleccione una Materia --</option>
+                        </select>
+                        <span asp-validation-for="MateriaId" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label asp-for="FechaInscripcion" class="control-label"></label>
+                <input asp-for="FechaInscripcion" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" readonly />
+                <span asp-validation-for="FechaInscripcion" class="text-danger"></span>
+            </div>
+            
+            <div class="alert alert-info">
+                <h5>Restricciones:</h5>
+                <ul>
+                    <li>Un estudiante puede inscribir máximo 3 materias.</li>
+                    <li>Un estudiante no puede tomar dos materias con el mismo profesor.</li>
+                    <li>Cada materia equivale a 3 créditos.</li>
+                </ul>
+            </div>
+            
+            <div class="form-group mt-3">
+                <button type="submit" class="btn btn-primary">Inscribir</button>
+                <a asp-action="Index" class="btn btn-secondary">Volver al Listado</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

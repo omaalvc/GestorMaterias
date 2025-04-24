@@ -1,0 +1,55 @@
+@model IEnumerable<GestorMaterias.Models.Estudiante>
+
+@{
+    ViewData["Title"] = "Compañeros de Clase";
+    var materia = ViewBag.Materia as GestorMaterias.Models.Materia;
+    var estudianteId = ViewBag.EstudianteId;
+}
+
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Compañeros de Clase en @materia?.Nombre</h4>
+            <span class="badge bg-light text-dark">Profesor: @materia?.Profesor?.Nombre</span>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (Model != null && Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-info">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var companero in Model)
+                        {
+                            <tr>
+                                <td>@companero.Nombre</td>
+                                <td>@companero.Email</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="alert alert-success mt-3">
+                <h5>Total de Compañeros: @Model.Count()</h5>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <h5>No hay otros compañeros inscritos en esta materia.</h5>
+                <p>Eres el único estudiante en este momento.</p>
+            </div>
+        }
+    </div>
+    <div class="card-footer">
+        <a asp-controller="Registros" asp-action="PorEstudiante" asp-route-id="@estudianteId" class="btn btn-primary">Volver a Mis Inscripciones</a>
+        <a asp-controller="Materias" asp-action="Details" asp-route-id="@materia?.Id" class="btn btn-info">Ver Detalles de la Materia</a>
+    </div>
+</div>

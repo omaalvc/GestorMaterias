@@ -1,0 +1,61 @@
+@model GestorMaterias.Models.Materia
+
+@{
+    ViewData["Title"] = "Editar Materia";
+}
+
+<div class="card">
+    <div class="card-header bg-warning text-dark">
+        <h4 class="mb-0">Editar Materia</h4>
+    </div>
+    <div class="card-body">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Nombre" class="control-label"></label>
+                        <input asp-for="Nombre" class="form-control" />
+                        <span asp-validation-for="Nombre" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="ProfesorId" class="control-label">Profesor</label>
+                        <select asp-for="ProfesorId" class="form-select" asp-items="ViewBag.Profesores">
+                            <option value="">-- Seleccione un Profesor --</option>
+                        </select>
+                        <span asp-validation-for="ProfesorId" class="text-danger"></span>
+                        <small class="text-muted">Recordar que un profesor solo puede impartir máximo 2 materias.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Descripcion" class="control-label"></label>
+                <textarea asp-for="Descripcion" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Descripcion" class="text-danger"></span>
+            </div>
+            
+            <div class="alert alert-info">
+                <div class="form-group mb-0">
+                    <label asp-for="Creditos" class="control-label"></label>
+                    <input asp-for="Creditos" class="form-control" value="3" readonly />
+                    <span asp-validation-for="Creditos" class="text-danger"></span>
+                    <small class="form-text text-muted">Todas las materias tienen 3 créditos por reglamento institucional.</small>
+                </div>
+            </div>
+            
+            <div class="form-group mt-3">
+                <button type="submit" class="btn btn-warning">Guardar Cambios</button>
+                <a asp-action="Index" class="btn btn-secondary">Volver al Listado</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

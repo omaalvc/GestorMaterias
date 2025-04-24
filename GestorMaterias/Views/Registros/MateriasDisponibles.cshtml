@@ -1,0 +1,88 @@
+@model List<GestorMaterias.Models.Materia>
+
+@{
+    ViewData["Title"] = "Materias Disponibles";
+}
+
+<div class="container mt-4">
+    <h2>Materias Disponibles para Inscripción</h2>
+
+    @if (ViewBag.MensajeError != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.MensajeError
+        </div>
+    }
+
+    @if (ViewBag.MensajeExito != null)
+    {
+        <div class="alert alert-success">
+            @ViewBag.MensajeExito
+        </div>
+    }
+
+    <div class="mb-3">
+        <a asp-action="PorEstudiante" class="btn btn-secondary">Volver a Mis Materias</a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <p>No hay materias disponibles para inscripción en este momento.</p>
+            <p>Recuerda que no puedes inscribir más de 3 materias, ni repetir materias o inscribir más de una materia con el mismo profesor.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                Restricciones para inscripción
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>No puedes inscribir más de 3 materias simultáneamente</li>
+                    <li>No puedes tener más de una materia con el mismo profesor</li>
+                    <li>No puedes inscribir una materia que ya tienes activa</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Materia</th>
+                        <th>Créditos</th>
+                        <th>Profesor</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var materia in Model)
+                    {
+                        <tr>
+                            <td>@materia.Nombre</td>
+                            <td>@materia.Creditos</td>
+                            <td>
+                                @if (materia.Profesor != null)
+                                {
+                                    @(materia.Profesor.Nombre)
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin asignar</span>
+                                }
+                            </td>
+                            <td>
+                                <form asp-action="InscribirMateria" method="post">
+                                    <input type="hidden" name="materiaId" value="@materia.Id" />
+                                    <button type="submit" class="btn btn-primary btn-sm">Inscribir</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

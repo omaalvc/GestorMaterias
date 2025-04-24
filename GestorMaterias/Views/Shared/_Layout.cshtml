@@ -40,7 +40,7 @@
                                     <a class="nav-link text-white" asp-area="" asp-controller="Registros" asp-action="Index">Inscripciones</a>
                                 </li>
                             }
-                            else
+                            else if (User.IsInRole("Estudiante"))
                             {
                                 <li class="nav-item">
                                     <a class="nav-link text-white" asp-area="" asp-controller="Materias" asp-action="Index">Materias Disponibles</a>
@@ -52,6 +52,9 @@
                                 <li class="nav-item">
                                     <a class="nav-link text-white" asp-area="" asp-controller="Registros" asp-action="MateriasDisponibles"
                                         asp-route-id="@User.Claims.FirstOrDefault(c => c.Type == "EstudianteId")?.Value">Inscribirme</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-white" asp-area="" asp-controller="Registros" asp-action="PorEstudiante">Mis Materias</a>
                                 </li>
                             }
                         }

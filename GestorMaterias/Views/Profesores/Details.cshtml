@@ -1,0 +1,82 @@
+@model GestorMaterias.Models.Profesor
+
+@{
+    ViewData["Title"] = "Detalles del Profesor";
+    var materias = ViewBag.Materias as List<GestorMaterias.Models.Materia>;
+}
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Información del Profesor</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <dl class="row">
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Nombre)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Nombre)</dd>
+
+                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Email)</dt>
+                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Email)</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl class="row">
+                    <dt class="col-sm-4">Materias Asignadas</dt>
+                    <dd class="col-sm-8">@Model.Materias?.Count() / 2</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-info">Editar</a>
+        <a asp-action="Index" class="btn btn-secondary">Volver al Listado</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Materias Asignadas</h4>
+            <span class="badge bg-light text-dark">Total: @(materias?.Count ?? 0) / 2</span>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (materias != null && materias.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-info">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Créditos</th>
+                            <th>Estudiantes</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var materia in materias)
+                        {
+                            <tr>
+                                <td>@materia.Nombre</td>
+                                <td>@materia.Descripcion</td>
+                                <td>@materia.Creditos</td>
+                                <td>@(materia.Registros?.Count() ?? 0)</td>
+                                <td>
+                                    <a asp-controller="Materias" asp-action="Details" asp-route-id="@materia.Id" class="btn btn-sm btn-info">Ver Materia</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                Este profesor no tiene materias asignadas.
+            </div>
+        }
+    </div>
+</div>

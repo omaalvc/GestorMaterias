@@ -23,7 +23,7 @@ namespace GestorMaterias.Models
 
         // Estado de la inscripción (Activo, Cancelado, etc.)
         public string Estado { get; set; } = "Activo";
-        
+
         // Método para validar si la inscripción es válida según las reglas
         public bool EsInscripcionValida()
         {
