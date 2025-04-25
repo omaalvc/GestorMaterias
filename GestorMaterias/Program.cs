@@ -1,10 +1,12 @@
-using System.Text;
 using GestorMaterias.Data;
 using GestorMaterias.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,15 +53,44 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Configuración básica de Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Materias API",
+        Version = "v1"
+    });
+    
+    // Resolver conflictos de rutas tomando la primera acción que encuentre
+    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+    
+    // Filtrar para mostrar solo el controlador de Materias
+    c.DocInclusionPredicate((docName, apiDesc) =>
+    {
+        if (apiDesc.ActionDescriptor.RouteValues.TryGetValue("controller", out var controllerName))
+        {
+            return controllerName.Equals("Materias", StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
+    });
+});
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+// Configurar el pipeline HTTP
+if (app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    app.UseDeveloperExceptionPage();
 }
+
+// Usar Swagger siempre
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Materias API v1");
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

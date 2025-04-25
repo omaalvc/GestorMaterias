@@ -4,9 +4,16 @@ using GestorMaterias.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace GestorMaterias.Controllers
 {
+    /// <summary>
+    /// Controlador para la gestión de materias
+    /// </summary>
+    [ApiController]
+    [Route("[controller]")]
     public class MateriasController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -18,13 +25,28 @@ namespace GestorMaterias.Controllers
             _materiaService = materiaService;
         }
 
-        // GET: Materias
+        /// <summary>
+        /// Obtiene todas las materias
+        /// </summary>
+        /// <returns>Lista de todas las materias</returns>
+        /// <response code="200">Devuelve la lista de materias</response>
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> Index()
         {
             return View(await _materiaService.ObtenerTodasLasMaterias());
         }
 
-        // GET: Materias/Details/5
+        /// <summary>
+        /// Obtiene los detalles de una materia por su ID
+        /// </summary>
+        /// <param name="id">ID de la materia</param>
+        /// <returns>Datos de la materia solicitada</returns>
+        /// <response code="200">Devuelve los datos de la materia solicitada</response>
+        /// <response code="404">Si la materia no existe</response>
+        [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -49,7 +71,11 @@ namespace GestorMaterias.Controllers
             return View(materia);
         }
 
-        // GET: Materias/Create
+        /// <summary>
+        /// Muestra el formulario para crear una nueva materia
+        /// </summary>
+        /// <returns>Vista para crear una materia</returns>
+        [HttpGet("Create")]
         public async Task<IActionResult> Create()
         {
             // Obtener solo profesores que pueden impartir más materias (menos de 2)
@@ -74,8 +100,17 @@ namespace GestorMaterias.Controllers
             return View();
         }
 
-        // POST: Materias/Create
+        /// <summary>
+        /// Crea una nueva materia
+        /// </summary>
+        /// <param name="materia">Datos de la materia a crear</param>
+        /// <returns>Redirección a la lista de materias si es exitoso</returns>
+        /// <response code="200">Si la materia fue creada correctamente</response>
+        /// <response code="400">Si los datos proporcionados no son válidos</response>
         [HttpPost]
+        [Route("Create")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Materia materia)
         {
@@ -130,7 +165,16 @@ namespace GestorMaterias.Controllers
             return View(materia);
         }
 
-        // GET: Materias/Edit/5
+        /// <summary>
+        /// Muestra el formulario para editar una materia existente
+        /// </summary>
+        /// <param name="id">ID de la materia a editar</param>
+        /// <returns>Vista para editar la materia</returns>
+        /// <response code="200">Devuelve la vista de edición</response>
+        /// <response code="404">Si la materia no existe</response>
+        [HttpGet("Edit/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -164,8 +208,19 @@ namespace GestorMaterias.Controllers
             return View(materia);
         }
 
-        // POST: Materias/Edit/5
-        [HttpPost]
+        /// <summary>
+        /// Edita una materia existente
+        /// </summary>
+        /// <param name="id">ID de la materia a editar</param>
+        /// <param name="materia">Datos actualizados de la materia</param>
+        /// <returns>Redirección a la lista de materias si es exitoso</returns>
+        /// <response code="200">Si la materia fue actualizada correctamente</response>
+        /// <response code="400">Si los datos proporcionados no son válidos</response>
+        /// <response code="404">Si la materia no existe</response>
+        [HttpPost("Edit/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Nombre,Descripcion,ProfesorId")] Materia materia)
         {
@@ -225,6 +280,8 @@ namespace GestorMaterias.Controllers
         }
 
         // GET: Materias/Delete/5
+        [HttpGet]
+        [Route("Delete/{id}")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -250,7 +307,8 @@ namespace GestorMaterias.Controllers
         }
 
         // POST: Materias/Delete/5
-        [HttpPost, ActionName("Delete")]
+        [HttpPost]
+        [Route("Delete/{id}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
