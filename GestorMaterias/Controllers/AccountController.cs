@@ -17,34 +17,72 @@ namespace GestorMaterias.Controllers
             _usuarioService = usuarioService;
         }
 
-        // GET: /Account/Login
         [HttpGet]
         public IActionResult Login(string returnUrl = null)
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
             ViewData["ReturnUrl"] = returnUrl;
             return View();
         }
 
-        // POST: /Account/Login
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
         {
-            ViewData["ReturnUrl"] = returnUrl;
-            if (ModelState.IsValid)
+            try
             {
-                var resultado = await _usuarioService.ValidarCredenciales(model.Username, model.Password);
-                if (resultado.success)
+                if (ModelState.IsValid)
                 {
-                    await IniciarSesion(resultado.usuario, model.RememberMe);
-                    return RedirectToLocal(returnUrl);
+                    var resultado = await _usuarioService.ValidarCredenciales(model.Username, model.Password);
+                    if (resultado.success)
+                    {
+                        // Crear los claims para el usuario
+                        var claims = new List<Claim>
+                        {
+                            new Claim(ClaimTypes.Name, resultado.usuario.Username),
+                            new Claim(ClaimTypes.Email, resultado.usuario.Email),
+                            new Claim("FullName", resultado.usuario.NombreCompleto),
+                            new Claim(ClaimTypes.Role, resultado.usuario.EsAdministrador ? "Administrador" : "Estudiante")
+                        };
+
+                        if (resultado.usuario.EstudianteId.HasValue)
+                        {
+                            claims.Add(new Claim("EstudianteId", resultado.usuario.EstudianteId.Value.ToString()));
+                        }
+
+                        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                        var principal = new ClaimsPrincipal(identity);
+
+                        var authProperties = new AuthenticationProperties
+                        {
+                            IsPersistent = model.RememberMe,
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(3)
+                        };
+
+                        await HttpContext.SignInAsync(
+                            CookieAuthenticationDefaults.AuthenticationScheme,
+                            principal,
+                            authProperties);
+
+                        if (string.IsNullOrEmpty(returnUrl))
+                        {
+                            return RedirectToAction("Index", "Home");
+                        }
+                        return Redirect(returnUrl);
+                    }
+                    
+                    ModelState.AddModelError(string.Empty, "Usuario o contraseña incorrectos");
                 }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, resultado.message);
-                }
+                return View(model);
             }
-            return View(model);
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, "Error al iniciar sesión: " + ex.Message);
+                return View(model);
+            }
         }
 
         // GET: /Account/Register

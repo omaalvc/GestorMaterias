@@ -3,9 +3,16 @@ using GestorMaterias.Models;
 using GestorMaterias.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 namespace GestorMaterias.Controllers
 {
+    [Route("[controller]")]
+    [ApiController]
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme)]
     public class ProfesoresController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -17,66 +24,84 @@ namespace GestorMaterias.Controllers
             _materiaService = materiaService;
         }
 
-        // GET: Profesores
+        // GET: /Profesores
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
             var profesores = await _context.Profesores
                 .Include(p => p.Materias)
                 .ToListAsync();
+                
+            // Si es una solicitud AJAX o API, devolver JSON
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || 
+                Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Ok(profesores);
+            }
+            
+            // De lo contrario, devolver una vista
             return View(profesores);
         }
 
-        // GET: Profesores/Details/5
-        public async Task<IActionResult> Details(int? id)
+        // GET: /Profesores/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> Details(int id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
             var profesor = await _context.Profesores
                 .Include(p => p.Materias)
                 .FirstOrDefaultAsync(m => m.Id == id);
+
             if (profesor == null)
             {
                 return NotFound();
             }
 
-            // Obtener todas las materias que imparte el profesor
-            ViewBag.Materias = await _materiaService.ObtenerMateriasPorProfesor(profesor.Id);
-
+            var materias = await _materiaService.ObtenerMateriasPorProfesor(profesor.Id);
+            
+            // Si es una solicitud AJAX o API, devolver JSON
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" ||
+                Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Ok(new { profesor, materias });
+            }
+            
+            // De lo contrario, pasar datos a la vista
+            ViewBag.Materias = materias;
             return View(profesor);
         }
 
-        // GET: Profesores/Create
+        // GET: /Profesores/Create
+        [HttpGet("Create")]
         public IActionResult Create()
         {
             return View();
         }
 
-        // POST: Profesores/Create
-        [HttpPost]
+        // POST: /Profesores/Create
+        [HttpPost("Create")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Nombre,Email")] Profesor profesor)
+        public async Task<ActionResult<Profesor>> Create(Profesor profesor)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return View(profesor);
+
+            _context.Profesores.Add(profesor);
+            await _context.SaveChangesAsync();
+
+            // Si es una solicitud AJAX o API, devolver JSON
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" ||
+                Request.Headers["Accept"].ToString().Contains("application/json"))
             {
-                _context.Add(profesor);
-                await _context.SaveChangesAsync();
-                TempData["Mensaje"] = "Profesor creado correctamente.";
-                return RedirectToAction(nameof(Index));
+                return CreatedAtAction(nameof(Details), new { id = profesor.Id }, profesor);
             }
-            return View(profesor);
+            
+            return RedirectToAction(nameof(Index));
         }
 
-        // GET: Profesores/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        // GET: /Profesores/Edit/5
+        [HttpGet("Edit/{id}")]
+        public async Task<IActionResult> Edit(int id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
             var profesor = await _context.Profesores.FindAsync(id);
             if (profesor == null)
             {
@@ -85,95 +110,156 @@ namespace GestorMaterias.Controllers
             return View(profesor);
         }
 
-        // POST: Profesores/Edit/5
-        [HttpPost]
+        // POST: /Profesores/Edit/5
+        [HttpPost("Edit/{id}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Nombre,Email")] Profesor profesor)
+        [Consumes("application/x-www-form-urlencoded")]
+        public async Task<IActionResult> Edit(int id, [FromForm] Profesor profesor)
         {
             if (id != profesor.Id)
+                return BadRequest();
+
+            if (!ModelState.IsValid)
+                return View(profesor);
+
+            try
             {
-                return NotFound();
+                var profesorExistente = await _context.Profesores.FindAsync(id);
+                if (profesorExistente == null)
+                {
+                    return NotFound();
+                }
+
+                // Actualizar propiedades
+                profesorExistente.Nombre = profesor.Nombre;
+                profesorExistente.Email = profesor.Email;
+
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ProfesorExists(id))
+                    return NotFound();
+                throw;
             }
 
-            if (ModelState.IsValid)
+            // Si es una solicitud AJAX o API, devolver resultado 200
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" ||
+                Request.Headers["Accept"].ToString().Contains("application/json"))
             {
-                try
-                {
-                    _context.Update(profesor);
-                    await _context.SaveChangesAsync();
-                    TempData["Mensaje"] = "Profesor actualizado correctamente.";
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ProfesorExists(profesor.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                return Ok(profesor);
             }
-            return View(profesor);
+            
+            return RedirectToAction(nameof(Index));
         }
 
-        // GET: Profesores/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        // GET: /Profesores/Delete/5
+        [HttpGet("Delete/{id}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
             var profesor = await _context.Profesores
                 .Include(p => p.Materias)
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (profesor == null)
             {
                 return NotFound();
             }
 
-            // Validar si tiene materias asignadas
-            if (profesor.Materias.Any())
-            {
-                ViewBag.Error = "No se puede eliminar el profesor porque tiene materias asignadas.";
-            }
-
             return View(profesor);
         }
 
-        // POST: Profesores/Delete/5
-        [HttpPost, ActionName("Delete")]
+        // POST: /Profesores/Delete/5
+        [HttpPost("Delete/{id}"), ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var profesor = await _context.Profesores
                 .Include(p => p.Materias)
                 .FirstOrDefaultAsync(p => p.Id == id);
-                
-            if (profesor == null)
-            {
-                return NotFound();
-            }
 
-            // Verificar si tiene materias asignadas
+            if (profesor == null)
+                return NotFound();
+
             if (profesor.Materias.Any())
             {
-                TempData["Error"] = "No se puede eliminar el profesor porque tiene materias asignadas.";
-                return RedirectToAction(nameof(Index));
+                ModelState.AddModelError(string.Empty, "No se puede eliminar el profesor porque tiene materias asignadas.");
+                return View(profesor);
             }
 
             _context.Profesores.Remove(profesor);
             await _context.SaveChangesAsync();
-            TempData["Mensaje"] = "Profesor eliminado correctamente.";
+
+            // Si es una solicitud AJAX o API, devolver NoContent
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" ||
+                Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return NoContent();
+            }
+            
             return RedirectToAction(nameof(Index));
         }
 
         private bool ProfesorExists(int id)
         {
             return _context.Profesores.Any(e => e.Id == id);
+        }
+
+        // Este endpoint es solo para API
+        [HttpPut("{id}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [Consumes("application/json")]
+        public async Task<IActionResult> UpdateProfesor(int id, [FromBody] Profesor profesor)
+        {
+            if (id != profesor.Id)
+                return BadRequest();
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                // Obtener el profesor actual para actualizarlo
+                var profesorExistente = await _context.Profesores.FindAsync(id);
+                
+                if (profesorExistente == null)
+                    return NotFound();
+                
+                // Actualizar propiedades
+                profesorExistente.Nombre = profesor.Nombre;
+                profesorExistente.Email = profesor.Email;
+                
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ProfesorExists(id))
+                    return NotFound();
+                throw;
+            }
+
+            return NoContent();
+        }
+
+        // Este endpoint es solo para API
+        [HttpDelete("{id}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> DeleteProfesor(int id)
+        {
+            var profesor = await _context.Profesores
+                .Include(p => p.Materias)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (profesor == null)
+                return NotFound();
+
+            if (profesor.Materias.Any())
+                return BadRequest("No se puede eliminar el profesor porque tiene materias asignadas.");
+
+            _context.Profesores.Remove(profesor);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
     }
 }
