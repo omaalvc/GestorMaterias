@@ -12,7 +12,6 @@ namespace GestorMaterias.Controllers
     /// <summary>
     /// Controlador para la gestión de materias
     /// </summary>
-    [ApiController]
     [Route("[controller]")]
     public class MateriasController : Controller
     {
@@ -109,6 +108,7 @@ namespace GestorMaterias.Controllers
         /// <response code="400">Si los datos proporcionados no son válidos</response>
         [HttpPost]
         [Route("Create")]
+        [Consumes("application/json", "application/x-www-form-urlencoded")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ValidateAntiForgeryToken]
@@ -218,11 +218,12 @@ namespace GestorMaterias.Controllers
         /// <response code="400">Si los datos proporcionados no son válidos</response>
         /// <response code="404">Si la materia no existe</response>
         [HttpPost("Edit/{id}")]
+        [Consumes("application/json", "application/x-www-form-urlencoded")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Nombre,Descripcion,ProfesorId")] Materia materia)
+        public async Task<IActionResult> Edit(int id, [FromForm][Bind("Id,Nombre,Descripcion,ProfesorId")] Materia materia)
         {
             if (id != materia.Id)
             {
@@ -325,22 +326,13 @@ namespace GestorMaterias.Controllers
             // Verificar si la materia tiene estudiantes matriculados o profesor asignado
             if ((materia.Registros != null && materia.Registros.Any()) || materia.Profesor != null)
             {
-                ViewBag.Error = "No se puede eliminar la materia porque tiene estudiantes matriculados o un profesor asignado.";
-                
-                // Recargar la materia con sus estudiantes para la vista
-                materia = await _context.Materias
-                    .Include(m => m.Profesor)
-                    .Include(m => m.Registros)
-                    .ThenInclude(r => r.Estudiante)
-                    .FirstOrDefaultAsync(m => m.Id == id);
-                    
-                //materia.Estudiantes = materia.Registros?.Select(r => r.Estudiante).ToList() ?? new List<Estudiante>();
-                
-                return View(materia);
+                TempData["Error"] = "No se puede eliminar la materia porque tiene estudiantes matriculados o un profesor asignado.";
+                return RedirectToAction(nameof(Delete), new { id = id });
             }
 
             _context.Materias.Remove(materia);
             await _context.SaveChangesAsync();
+            TempData["Mensaje"] = "Materia eliminada correctamente.";
             return RedirectToAction(nameof(Index));
         }
     }

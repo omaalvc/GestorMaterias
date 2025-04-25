@@ -12,7 +12,6 @@ namespace GestorMaterias.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme)]
     public class ProfesoresController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -77,25 +76,35 @@ namespace GestorMaterias.Controllers
             return View();
         }
 
-        // POST: /Profesores/Create
-        [HttpPost("Create")]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult<Profesor>> Create(Profesor profesor)
+        // Endpoint API para crear profesor
+        [HttpPost]
+        [Consumes("application/json")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<Profesor>> CreateProfesor([FromBody] Profesor profesor)
         {
             if (!ModelState.IsValid)
-                return View(profesor);
+                return BadRequest(ModelState);
 
             _context.Profesores.Add(profesor);
             await _context.SaveChangesAsync();
 
-            // Si es una solicitud AJAX o API, devolver JSON
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" ||
-                Request.Headers["Accept"].ToString().Contains("application/json"))
+            return CreatedAtAction(nameof(Details), new { id = profesor.Id }, profesor);
+        }
+
+        // Endpoint MVC para crear profesor
+        [HttpPost("Create")]
+        [ValidateAntiForgeryToken]
+        [Consumes("application/x-www-form-urlencoded", "multipart/form-data")]
+        public async Task<IActionResult> Create([FromForm] Profesor profesor)
+        {
+            if (ModelState.IsValid)
             {
-                return CreatedAtAction(nameof(Details), new { id = profesor.Id }, profesor);
+                _context.Add(profesor);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
             }
-            
-            return RedirectToAction(nameof(Index));
+            return View(profesor);
         }
 
         // GET: /Profesores/Edit/5
@@ -181,12 +190,6 @@ namespace GestorMaterias.Controllers
             if (profesor == null)
                 return NotFound();
 
-            if (profesor.Materias.Any())
-            {
-                ModelState.AddModelError(string.Empty, "No se puede eliminar el profesor porque tiene materias asignadas.");
-                return View(profesor);
-            }
-
             _context.Profesores.Remove(profesor);
             await _context.SaveChangesAsync();
 
@@ -252,9 +255,6 @@ namespace GestorMaterias.Controllers
 
             if (profesor == null)
                 return NotFound();
-
-            if (profesor.Materias.Any())
-                return BadRequest("No se puede eliminar el profesor porque tiene materias asignadas.");
 
             _context.Profesores.Remove(profesor);
             await _context.SaveChangesAsync();

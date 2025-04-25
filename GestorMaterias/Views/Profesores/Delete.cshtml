@@ -38,7 +38,6 @@
                         <div class="alert alert-warning">
                             <i class="bi bi-exclamation-triangle"></i>
                             <strong>Advertencia:</strong> Este profesor tiene @Model.Materias.Count materia(s) asignada(s).
-                            No se puede eliminar hasta que se reasignen estas materias a otro profesor.
                         </div>
                         <ul class="list-group">
                             @foreach (var materia in Model.Materias)
@@ -57,24 +56,15 @@
             </div>
         </div>
         <div class="card-footer">
-            @if (Model.Materias == null || !Model.Materias.Any())
-            {
-                <form asp-action="Delete" method="post">
-                    <input type="hidden" name="id" value="@Model.Id" />
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash"></i> Eliminar
-                    </button>
-                    <a asp-action="Index" class="btn btn-secondary ml-2">
-                        <i class="bi bi-arrow-left"></i> Cancelar
-                    </a>
-                </form>
-            }
-            else
-            {
-                <a asp-action="Index" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Volver a la lista
+            <form asp-action="Delete" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+                <a asp-action="Index" class="btn btn-secondary ml-2">
+                    <i class="bi bi-arrow-left"></i> Cancelar
                 </a>
-            }
+            </form>
         </div>
     </div>
 </div>
