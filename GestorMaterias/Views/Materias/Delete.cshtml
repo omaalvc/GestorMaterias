@@ -1,0 +1,58 @@
+@model GestorMaterias.Models.Materia
+
+@{
+    ViewData["Title"] = "Eliminar Materia";
+}
+
+<h1>Eliminar Materia</h1>
+
+<h3>¿Estás seguro de que deseas eliminar esta materia?</h3>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">
+        @ViewBag.Error
+    </div>
+}
+
+<div>
+    <h4>Materia</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Nombre)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Nombre)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Descripcion)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Descripcion)
+        </dd>
+    </dl>
+
+    @if (Model.Estudiantes != null && Model.Estudiantes.Any())
+    {
+        <h4>Estudiantes matriculados:</h4>
+        <ul>
+            @foreach (var estudiante in Model.Estudiantes)
+            {
+                <li>@estudiante.Nombre</li>
+            }
+        </ul>
+    }
+
+    @if (Model.Profesor != null)
+    {
+        <h4>Profesor asignado:</h4>
+        <p>@Model.Profesor.Nombre</p>
+    }
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Eliminar" class="btn btn-danger" />
+        <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+    </form>
+</div>

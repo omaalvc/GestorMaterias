@@ -11,5 +11,6 @@ namespace GestorMaterias.Services
         Task<bool> AsociarEstudianteAUsuario(int usuarioId, int estudianteId);
         Task<bool> UsuarioExiste(string username);
         Task<bool> EmailExiste(string email);
+        Task<(bool success, string message, Usuario? usuario)> RegistrarUsuarioYEstudiante(Usuario usuario, Estudiante estudiante, string password);
     }
 }

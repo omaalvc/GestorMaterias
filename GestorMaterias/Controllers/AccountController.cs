@@ -61,25 +61,37 @@ namespace GestorMaterias.Controllers
         {
             if (ModelState.IsValid)
             {
-                var usuario = new Usuario
-                {
-                    Username = model.Username,
-                    Email = model.Email,
-                    NombreCompleto = model.NombreCompleto,
-                    FechaRegistro = DateTime.Now
-                };
+            // Crear un objeto Estudiante para asociarlo con el usuario
+            var estudiante = new Estudiante
+            {
+                Nombre = model.NombreCompleto,
+                Email = model.Email,
+                //FechaRegistro = DateTime.Now,
+                //Activo = true
+            };
+            
+            // Crear el usuario y asociarlo con el estudiante
+            var usuario = new Usuario
+            {
+                Username = model.Username,
+                Email = model.Email,
+                NombreCompleto = model.NombreCompleto,
+                FechaRegistro = DateTime.Now,
+                // Se asignará el EstudianteId después de crear el estudiante
+            };
 
-                var resultado = await _usuarioService.RegistrarUsuario(usuario, model.Password);
-                if (resultado.success)
-                {
-                    // Iniciar sesión automáticamente después del registro
-                    await IniciarSesion(resultado.usuario, false);
-                    return RedirectToAction("Index", "Home");
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, resultado.message);
-                }
+            var resultado = await _usuarioService.RegistrarUsuarioYEstudiante(usuario, estudiante, model.Password);
+            
+            if (resultado.success)
+            {
+                // Iniciar sesión automáticamente después del registro
+                await IniciarSesion(resultado.usuario, false);
+                return RedirectToAction("Index", "Home");
+            }
+            else
+            {
+                ModelState.AddModelError(string.Empty, resultado.message);
+            }
             }
             return View(model);
         }

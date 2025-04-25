@@ -149,25 +149,28 @@ namespace GestorMaterias.Controllers
         }
 
         // GET: Registros/PorEstudiante/5
-        [HttpGet("PorEstudiante/{id}")]
         public async Task<IActionResult> PorEstudiante(int? id)
         {
-            if (id == null)
+            int estudianteId;
+            if (id.HasValue)
             {
-                return NotFound();
+                estudianteId = id.Value;
+            }
+            else
+            {
+                // Obtener el id del estudiante autenticado
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "EstudianteId");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out estudianteId))
+                {
+                    TempData["Error"] = "No se pudo identificar al estudiante.";
+                    return RedirectToAction("Index", "Home");
+                }
             }
 
-            var estudiante = await _context.Estudiantes.FindAsync(id);
-            if (estudiante == null)
-            {
-                return NotFound();
-            }
+            // Utilizar el servicio para obtener los registros del estudiante
+            var inscripciones = await _registroService.ObtenerRegistrosPorEstudiante(estudianteId);
 
-            // Obtener registros del estudiante
-            var registros = await _registroService.ObtenerRegistrosPorEstudiante(id.Value);
-            
-            ViewBag.Estudiante = estudiante;
-            return View(registros);
+            return View(inscripciones);
         }
         
         // GET: Registros/MateriasDisponibles/5
@@ -204,6 +207,45 @@ namespace GestorMaterias.Controllers
             ViewBag.Estudiante = estudiante;
             return View(materiasDisponibles);
         }
+
+        // GET: Registros/MateriasDisponiblesEstudiantes/2
+        public async Task<IActionResult> MateriasDisponiblesEstudiantes(int? id)
+        {
+            int estudianteId;
+            
+            if (id.HasValue)
+            {
+                // If an ID is provided in the URL, use that
+                estudianteId = id.Value;
+            }
+            else
+            {
+                // Otherwise get the ID from the authenticated user
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "EstudianteId");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out estudianteId))
+                {
+                    TempData["Error"] = "No se pudo identificar al estudiante.";
+                    return RedirectToAction("Index", "Home");
+                }
+            }
+
+            // Verificar que el estudiante existe
+            var estudiante = await _context.Estudiantes.FindAsync(estudianteId);
+            if (estudiante == null)
+            {
+                return NotFound();
+            }
+
+            // Obtener materias disponibles
+            var materiasDisponibles = await _context.Materias
+                .Include(m => m.Profesor)
+                .Where(m => !_context.Registros.Any(r => r.EstudianteId == estudianteId && r.MateriaId == m.Id && r.Estado == "Activo"))
+                .ToListAsync();
+
+            ViewBag.Estudiante = estudiante;
+            
+            return View("MateriasDisponibles", materiasDisponibles);
+        }
         
         // POST: Registros/Inscribir
         [HttpPost]
@@ -224,8 +266,20 @@ namespace GestorMaterias.Controllers
             return RedirectToAction("Details", "Estudiantes", new { id = estudianteId });
         }
 
-        // GET: Registros/PorEstudiante
-        [HttpPost("PorEstudiantes")]
+        // GET: Registros/InscribirMateria?estudianteId={estudianteId}&materiaId={materiaId}
+        public async Task<IActionResult> InscribirMateria(int estudianteId, int materiaId)
+        {
+            var resultado = await _registroService.InscribirEstudianteAMateria(estudianteId, materiaId);
+            if (resultado.Success)
+                TempData["Mensaje"] = resultado.Message;
+            else
+                TempData["Error"] = resultado.Message;
+
+            return RedirectToAction("MateriasDisponibles", new { id = estudianteId });
+        }
+
+        // GET: Registros/PorEstudianteDetalle
+        [HttpPost("PorEstudianteDetalle")]
         public async Task<IActionResult> PorEstudianteDetalle()
         {
             // Obtener el ID del estudiante actual desde la sesión de usuario
@@ -244,6 +298,21 @@ namespace GestorMaterias.Controllers
                 .ToListAsync();
 
             return View(inscripciones);
+        }
+
+        // POST: Registros/CancelarInscripcion
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelarInscripcion(int registroId)
+        {
+            var registro = await _context.Registros.FindAsync(registroId);
+            if (registro == null) return NotFound();
+
+            var resultado = await _registroService.EliminarInscripcion(registroId);
+            if (resultado.Success) TempData["Mensaje"] = resultado.Message;
+            else TempData["Error"] = resultado.Message;
+
+            return RedirectToAction("PorEstudiante", new { id = registro.EstudianteId });
         }
     }
 }

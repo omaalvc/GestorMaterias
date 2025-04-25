@@ -21,10 +21,6 @@
         </div>
     }
 
-    <div class="mb-3">
-        <a asp-action="PorEstudiante" class="btn btn-secondary">Volver a Mis Materias</a>
-    </div>
-
     @if (!Model.Any())
     {
         <div class="alert alert-info">
@@ -76,6 +72,7 @@
                             <td>
                                 <form asp-action="InscribirMateria" method="post">
                                     <input type="hidden" name="materiaId" value="@materia.Id" />
+                                    <input type="hidden" name="estudianteId" value="@(User.Claims.FirstOrDefault(c => c.Type == "EstudianteId")?.Value ?? "0")" />
                                     <button type="submit" class="btn btn-primary btn-sm">Inscribir</button>
                                 </form>
                             </td>

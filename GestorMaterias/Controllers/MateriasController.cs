@@ -64,6 +64,12 @@ namespace GestorMaterias.Controllers
                 }
             }
             
+            // Si no hay profesores disponibles, agregar un mensaje de advertencia
+            if (profesoresDisponibles.Count == 0)
+            {
+                TempData["MensajeError"] = "No hay profesores disponibles para asignar a la materia. Cada profesor solo puede impartir un máximo de 2 materias.";
+            }
+            
             ViewBag.Profesores = new SelectList(profesoresDisponibles, "Id", "Nombre");
             return View();
         }
@@ -71,9 +77,30 @@ namespace GestorMaterias.Controllers
         // POST: Materias/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Nombre,Descripcion,ProfesorId")] Materia materia)
+        public async Task<IActionResult> Create(Materia materia)
         {
-            if (ModelState.IsValid)
+            // Validación manual simplificada
+            bool isValid = true;
+            
+            if (string.IsNullOrEmpty(materia.Nombre))
+            {
+                ModelState.AddModelError("Nombre", "El nombre de la materia es requerido");
+                isValid = false;
+            }
+            
+            if (string.IsNullOrEmpty(materia.Descripcion))
+            {
+                ModelState.AddModelError("Descripcion", "La descripción de la materia es requerida");
+                isValid = false;
+            }
+            
+            if (materia.ProfesorId <= 0)
+            {
+                ModelState.AddModelError("ProfesorId", "Debe seleccionar un profesor");
+                isValid = false;
+            }
+
+            if (isValid)
             {
                 var resultado = await _materiaService.CrearMateria(materia);
                 if (resultado.Success)
@@ -87,7 +114,7 @@ namespace GestorMaterias.Controllers
                 }
             }
 
-            // Recargar lista de profesores si hay un error
+            // Recargar lista de profesores
             var profesores = await _context.Profesores.ToListAsync();
             var profesoresDisponibles = new List<Profesor>();
             
@@ -147,30 +174,47 @@ namespace GestorMaterias.Controllers
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            try
             {
-                var resultado = await _materiaService.ActualizarMateria(materia);
-                if (resultado.Success)
+                // Obtener la materia existente para actualizarla
+                var materiaExistente = await _context.Materias.FindAsync(id);
+                
+                if (materiaExistente == null)
                 {
-                    TempData["Mensaje"] = resultado.Message;
-                    return RedirectToAction(nameof(Index));
+                    return NotFound();
                 }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, resultado.Message);
-                }
+
+                // Actualizar los campos
+                materiaExistente.Nombre = materia.Nombre;
+                materiaExistente.Descripcion = materia.Descripcion;
+                materiaExistente.ProfesorId = materia.ProfesorId;
+
+                // Guardar cambios
+                await _context.SaveChangesAsync();
+                
+                TempData["Mensaje"] = "Materia actualizada correctamente.";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Error al actualizar: {ex.Message}");
             }
 
             // Recargar profesores en caso de error
-            var materiaExistente = await _materiaService.ObtenerMateriaPorId(id);
             var profesores = await _context.Profesores.ToListAsync();
             var profesoresDisponibles = new List<Profesor>();
             
-            profesoresDisponibles.Add(materiaExistente.Profesor);
+            // Incluir el profesor actual
+            var profesorActual = await _context.Profesores.FindAsync(materia.ProfesorId);
+            if (profesorActual != null)
+            {
+                profesoresDisponibles.Add(profesorActual);
+            }
             
+            // Añadir otros profesores que pueden impartir más materias
             foreach (var profesor in profesores)
             {
-                if (profesor.Id != materiaExistente.ProfesorId && await _materiaService.ProfesorPuedeImpartirMasMateria(profesor.Id))
+                if (profesor.Id != materia.ProfesorId && await _materiaService.ProfesorPuedeImpartirMasMateria(profesor.Id))
                 {
                     profesoresDisponibles.Add(profesor);
                 }
@@ -188,11 +232,19 @@ namespace GestorMaterias.Controllers
                 return NotFound();
             }
 
-            var materia = await _materiaService.ObtenerMateriaPorId(id.Value);
+            var materia = await _context.Materias
+                .Include(m => m.Profesor)
+                .Include(m => m.Registros)
+                .ThenInclude(r => r.Estudiante)
+                .FirstOrDefaultAsync(m => m.Id == id);
+                
             if (materia == null)
             {
                 return NotFound();
             }
+
+            // Para la vista necesitamos obtener los estudiantes de la materia
+            //materia.Estudiantes = materia.Registros?.Select(r => r.Estudiante).ToList() ?? new List<Estudiante>();
 
             return View(materia);
         }
@@ -202,16 +254,35 @@ namespace GestorMaterias.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var resultado = await _materiaService.EliminarMateria(id);
-            if (resultado.Success)
+            var materia = await _context.Materias
+                .Include(m => m.Profesor)
+                .Include(m => m.Registros)
+                .FirstOrDefaultAsync(m => m.Id == id);
+                
+            if (materia == null)
             {
-                TempData["Mensaje"] = resultado.Message;
+                return NotFound();
             }
-            else
+
+            // Verificar si la materia tiene estudiantes matriculados o profesor asignado
+            if ((materia.Registros != null && materia.Registros.Any()) || materia.Profesor != null)
             {
-                TempData["Error"] = resultado.Message;
+                ViewBag.Error = "No se puede eliminar la materia porque tiene estudiantes matriculados o un profesor asignado.";
+                
+                // Recargar la materia con sus estudiantes para la vista
+                materia = await _context.Materias
+                    .Include(m => m.Profesor)
+                    .Include(m => m.Registros)
+                    .ThenInclude(r => r.Estudiante)
+                    .FirstOrDefaultAsync(m => m.Id == id);
+                    
+                //materia.Estudiantes = materia.Registros?.Select(r => r.Estudiante).ToList() ?? new List<Estudiante>();
+                
+                return View(materia);
             }
-            
+
+            _context.Materias.Remove(materia);
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
     }

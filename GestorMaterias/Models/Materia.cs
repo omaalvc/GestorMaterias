@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GestorMaterias.Models
 {
@@ -7,26 +8,27 @@ namespace GestorMaterias.Models
         [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "El nombre de la materia es obligatorio")]
+        [Required(ErrorMessage = "El nombre de la materia es requerido")]
         [StringLength(100, ErrorMessage = "El nombre no puede exceder los 100 caracteres")]
-        public string Nombre { get; set; } = string.Empty;
+        public string Nombre { get; set; }
 
-        [Display(Name = "Descripción")]
-        public string Descripcion { get; set; } = string.Empty;
+        [Required(ErrorMessage = "La descripción de la materia es requerida")]
+        public string Descripcion { get; set; }
 
-        // Según los requerimientos, cada materia equivale a 3 créditos
         [Display(Name = "Créditos")]
         public int Creditos { get; set; } = 3; 
 
-        // Relación con el profesor que imparte la materia
-        [Required(ErrorMessage = "La materia debe tener un profesor asignado")]
-        public Profesor Profesor { get; set; } = null!;
+        // Eliminar validación Required para resolver problema
+        [Display(Name = "Profesor")]
         public int ProfesorId { get; set; }
 
-        // Relación con las inscripciones (registros)
+        public Profesor Profesor { get; set; }
+
         public List<Registro> Registros { get; set; } = new List<Registro>();
 
-        // Método para obtener lista de estudiantes inscritos
+        [NotMapped]
+        public List<Estudiante> Estudiantes { get; set; } = new List<Estudiante>();
+
         public List<Estudiante> ObtenerEstudiantesInscritos()
         {
             return Registros.Select(r => r.Estudiante).ToList();

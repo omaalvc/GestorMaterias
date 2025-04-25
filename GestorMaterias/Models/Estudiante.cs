@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GestorMaterias.Models
 {
@@ -7,18 +8,20 @@ namespace GestorMaterias.Models
         [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "El nombre es obligatorio")]
+        [Required(ErrorMessage = "El nombre es requerido")]
         [StringLength(100, ErrorMessage = "El nombre no puede exceder los 100 caracteres")]
-        public string Nombre { get; set; } = string.Empty;
+        public string Nombre { get; set; }
 
-        [Required(ErrorMessage = "El correo es obligatorio")]
-        [EmailAddress(ErrorMessage = "Formato de correo inválido")]
-        public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "El email es requerido")]
+        [EmailAddress(ErrorMessage = "El formato del email no es válido")]
+        public string Email { get; set; }
 
-        // Relación con inscripciones (registros)
         public List<Registro> Registros { get; set; } = new List<Registro>();
 
-        // Método para validar si el estudiante puede inscribirse a una materia
+        [NotMapped]
+        public List<Materia> Materias { get; set; } = new List<Materia>();
+
+               // Método para validar si el estudiante puede inscribirse a una materia
         public bool PuedeInscribirseAMateria(Materia materia)
         {
             // Validar que no exceda el límite de 3 materias

@@ -37,7 +37,7 @@
                             <td>@Html.DisplayFor(modelItem => item.Descripcion)</td>
                             <td>@Html.DisplayFor(modelItem => item.Creditos)</td>
                             <td>@item.Profesor?.Nombre</td>
-                            <td>@item.Registros?.Count ?? 0</td>
+                            <td>@item.Registros?.Count</td>
                             <td>
                                 <div class="btn-group">
                                     <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">Detalles</a>

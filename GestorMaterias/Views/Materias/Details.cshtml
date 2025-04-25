@@ -61,7 +61,10 @@
                     <thead class="table-info">
                         <tr>
                             <th>Nombre</th>
-                            <th>Email</th>
+                            @if (!User.IsInRole("Estudiante"))
+                            {
+                                <th>Email</th>
+                            }
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -70,7 +73,10 @@
                         {
                             <tr>
                                 <td>@estudiante.Nombre</td>
-                                <td>@estudiante.Email</td>
+                                @if (!User.IsInRole("Estudiante"))
+                                {
+                                    <td>@estudiante.Email</td>
+                                }
                                 <td>
                                     <a asp-controller="Estudiantes" asp-action="Details" asp-route-id="@estudiante.Id" class="btn btn-sm btn-info">Ver Estudiante</a>
                                 </td>

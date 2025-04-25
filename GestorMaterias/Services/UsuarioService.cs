@@ -85,5 +85,43 @@ namespace GestorMaterias.Services
         {
             return await _context.Usuarios.AnyAsync(u => u.Email == email);
         }
+
+        public async Task<(bool success, string message, Usuario? usuario)> RegistrarUsuarioYEstudiante(Usuario usuario, Estudiante estudiante, string password)
+        {
+            // Validaciones previas
+            if (await UsuarioExiste(usuario.Username))
+                return (false, "El nombre de usuario ya existe", null);
+
+            if (await EmailExiste(usuario.Email))
+                return (false, "El correo electrónico ya está registrado", null);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            
+            try
+            {
+                // Guardar el estudiante primero
+                _context.Estudiantes.Add(estudiante);
+                await _context.SaveChangesAsync();
+                
+                // Preparar el usuario
+                usuario.EstudianteId = estudiante.Id;
+                usuario.Estudiante = estudiante;
+                usuario.Password = password; // En producción: aplicar hash
+                usuario.EsAdministrador = false; // Es una cuenta de estudiante
+                
+                // Guardar el usuario
+                _context.Usuarios.Add(usuario);
+                await _context.SaveChangesAsync();
+                
+                await transaction.CommitAsync();
+                return (true, "Usuario y estudiante registrados correctamente", usuario);
+                
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, $"Error al registrar: {ex.Message}", null);
+            }
+        }
     }
 }

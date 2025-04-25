@@ -30,46 +30,31 @@
     </div>
 }
 
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Materias</h5>
-            </div>
-            <div class="card-body">
-                <p>Explora el catálogo de materias disponibles en la universidad.</p>
-                <ul>
-                    <li>Cursos en diferentes áreas de conocimiento</li>
-                    <li>Información sobre profesores y horarios</li>
-                    <li>Detalles sobre créditos y requisitos</li>
-                </ul>
-            </div>
-            <div class="card-footer">
-                <a asp-controller="Materias" asp-action="Index" class="btn btn-primary">Ver Materias</a>
-            </div>
-        </div>
-    </div>
-
-    @if (isAuthenticated && !isAdmin && !string.IsNullOrEmpty(estudianteId))
-    {
+    <div class="row mb-4">
         <div class="col-md-4">
             <div class="card h-100">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Mis Inscripciones</h5>
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Materias</h5>
                 </div>
                 <div class="card-body">
-                    <p>Gestiona tus inscripciones y materias actuales.</p>
+                    <p>Explora el catálogo de materias disponibles en la universidad.</p>
                     <ul>
-                        <li>Ver materias en las que estás inscrito</li>
-                        <li>Consultar información de compañeros</li>
-                        <li>Eliminar inscripciones si es necesario</li>
+                        <li>Cursos en diferentes áreas de conocimiento</li>
+                        <li>Información sobre profesores y horarios</li>
+                        <li>Detalles sobre créditos y requisitos</li>
                     </ul>
                 </div>
                 <div class="card-footer">
-                    <a asp-controller="Registros" asp-action="PorEstudiante" asp-route-id="@estudianteId" class="btn btn-success">Mis Inscripciones</a>
+                    <a asp-controller="Materias" asp-action="Index" class="btn btn-primary">Ver Materias</a>
                 </div>
             </div>
         </div>
+
+
+
+
+    @if (isAuthenticated && !isAdmin && User.IsInRole("Estudiante"))
+    {
 
         <div class="col-md-4">
             <div class="card h-100">
@@ -126,46 +111,6 @@
                 </div>
                 <div class="card-footer">
                     <a asp-controller="Estudiantes" asp-action="Index" class="btn btn-secondary">Gestionar Estudiantes</a>
-                </div>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Profesores</h5>
-                </div>
-                <div class="card-body">
-                    <p>Conoce nuestros profesores y sus especialidades.</p>
-                    <ul>
-                        <li>Información de contacto</li>
-                        <li>Materias que imparten</li>
-                        <li>Trayectoria académica</li>
-                    </ul>
-                </div>
-                <div class="card-footer">
-                    <a asp-controller="Profesores" asp-action="Index" class="btn btn-info">Ver Profesores</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Regístrate Ahora</h5>
-                </div>
-                <div class="card-body">
-                    <p>Crea tu cuenta para acceder a todas las funcionalidades.</p>
-                    <ul>
-                        <li>Inscripción en materias</li>
-                        <li>Seguimiento de tus cursos</li>
-                        <li>Gestión académica personalizada</li>
-                    </ul>
-                </div>
-                <div class="card-footer">
-                    <a asp-controller="Account" asp-action="Register" class="btn btn-success">Registrarme</a>
                 </div>
             </div>
         </div>

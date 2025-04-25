@@ -15,17 +15,25 @@
                 <dl class="row">
                     <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Nombre)</dt>
                     <dd class="col-sm-8">@Html.DisplayFor(model => model.Nombre)</dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Email)</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Email)</dd>
+                    @if (!User.IsInRole("Estudiante")){
+                        <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Email)</dt>
+                        <dd class="col-sm-8">@Html.DisplayFor(model => model.Email)</dd>
+                    }
                 </dl>
             </div>
         </div>
     </div>
     <div class="card-footer">
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-info">Editar</a>
-        <a asp-action="Index" class="btn btn-secondary">Volver al Listado</a>
-        <a asp-controller="Registros" asp-action="MateriasDisponibles" asp-route-id="@Model.Id" class="btn btn-success">Inscribir en Materias</a>
+        @if (User.IsInRole("Administrador"))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Editar</a>
+            <a asp-action="Index" class="btn btn-secondary">Volver al Listado</a>
+        }
+        else{
+            <a href="javascript:history.back();" class="btn btn-secondary">Volver</a>
+        }
+        
+        @* <a asp-controller="Registros" asp-action="MateriasDisponibles" asp-route-id="@Model.Id" class="btn btn-success">Inscribir en Materias</a> *@
     </div>
 </div>
 
@@ -47,7 +55,11 @@
                             <th>Profesor</th>
                             <th>Créditos</th>
                             <th>Fecha de Inscripción</th>
-                            <th>Acciones</th>
+                            @if (User.IsInRole("Administrador"))
+                            {
+                                <th>Acciones</th>
+                            }
+                            
                         </tr>
                     </thead>
                     <tbody>
@@ -58,12 +70,15 @@
                                 <td>@registro.Materia.Profesor?.Nombre</td>
                                 <td>@registro.Materia.Creditos</td>
                                 <td>@registro.FechaInscripcion.ToString("dd/MM/yyyy")</td>
-                                <td>
-                                    <div class="btn-group">
-                                        <a asp-controller="Registros" asp-action="Delete" asp-route-id="@registro.Id" class="btn btn-sm btn-danger">Eliminar</a>
-                                        <a asp-controller="Estudiantes" asp-action="VerCompaneros" asp-route-id="@Model.Id" asp-route-materiaId="@registro.MateriaId" class="btn btn-sm btn-info">Ver Compañeros</a>
-                                    </div>
-                                </td>
+                                @if (User.IsInRole("Administrador"))
+                                {
+                                    <td>
+                                        <div class="btn-group">
+                                            <a asp-controller="Registros" asp-action="Delete" asp-route-id="@registro.Id" class="btn btn-sm btn-danger">Eliminar</a>
+                                            <a asp-controller="Estudiantes" asp-action="VerCompaneros" asp-route-id="@Model.Id" asp-route-materiaId="@registro.MateriaId" class="btn btn-sm btn-info">Ver Compañeros</a>
+                                        </div>
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>

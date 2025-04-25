@@ -9,40 +9,58 @@
         <h4 class="mb-0">Crear Nueva Materia</h4>
     </div>
     <div class="card-body">
-        <form asp-action="Create">
+        @if (TempData["MensajeError"] != null)
+        {
+            <div class="alert alert-warning">
+                @TempData["MensajeError"]
+            </div>
+        }
+        
+        <form asp-action="Create" method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             
             <div class="row mb-3">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label asp-for="Nombre" class="control-label"></label>
-                        <input asp-for="Nombre" class="form-control" />
-                        <span asp-validation-for="Nombre" class="text-danger"></span>
+                        <label for="Nombre" class="control-label">Nombre</label>
+                        <input name="Nombre" id="Nombre" class="form-control" value="@Model?.Nombre" />
+                        @if (ViewData.ModelState["Nombre"]?.Errors.Count > 0)
+                        {
+                            <span class="text-danger">@ViewData.ModelState["Nombre"].Errors.First().ErrorMessage</span>
+                        }
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label asp-for="ProfesorId" class="control-label">Profesor</label>
-                        <select asp-for="ProfesorId" class="form-select" asp-items="ViewBag.Profesores">
-                            <option value="">-- Seleccione un Profesor --</option>
+                        <label for="ProfesorId" class="control-label">Profesor</label>
+                        <select name="ProfesorId" id="ProfesorId" class="form-control">
+                            <option value="0">-- Seleccionar Profesor --</option>
+                            @if (ViewBag.Profesores != null)
+                            {
+                                foreach (var item in ViewBag.Profesores)
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
+                            }
                         </select>
-                        <span asp-validation-for="ProfesorId" class="text-danger"></span>
+                        @if (ViewData.ModelState["ProfesorId"]?.Errors.Count > 0)
+                        {
+                            <span class="text-danger">@ViewData.ModelState["ProfesorId"].Errors.First().ErrorMessage</span>
+                        }
                     </div>
                 </div>
             </div>
-
-            <div class="form-group mb-3">
-                <label asp-for="Descripcion" class="control-label"></label>
-                <textarea asp-for="Descripcion" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Descripcion" class="text-danger"></span>
-            </div>
             
-            <div class="alert alert-info">
-                <div class="form-group mb-0">
-                    <label asp-for="Creditos" class="control-label"></label>
-                    <input asp-for="Creditos" class="form-control" value="3" readonly />
-                    <span asp-validation-for="Creditos" class="text-danger"></span>
-                    <small class="form-text text-muted">Todas las materias tienen 3 créditos por reglamento institucional.</small>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label for="Descripcion" class="control-label">Descripción</label>
+                        <textarea name="Descripcion" id="Descripcion" class="form-control" rows="3">@Model?.Descripcion</textarea>
+                        @if (ViewData.ModelState["Descripcion"]?.Errors.Count > 0)
+                        {
+                            <span class="text-danger">@ViewData.ModelState["Descripcion"].Errors.First().ErrorMessage</span>
+                        }
+                    </div>
                 </div>
             </div>
             
@@ -56,4 +74,33 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $(document).ready(function() {
+            // Configurar validación manual para el form
+            $('form').submit(function(e) {
+                let valid = true;
+                
+                // Validar nombre
+                if ($('#Nombre').val() === '') {
+                    alert('El nombre de la materia es requerido');
+                    valid = false;
+                }
+                
+                // Validar descripción
+                if ($('#Descripcion').val() === '') {
+                    alert('La descripción de la materia es requerida');
+                    valid = false;
+                }
+                
+                // Validar profesor
+                if ($('#ProfesorId').val() === '0' || $('#ProfesorId').val() === '') {
+                    alert('Debe seleccionar un profesor');
+                    valid = false;
+                }
+                
+                return valid;
+            });
+        });
+    </script>
 }
