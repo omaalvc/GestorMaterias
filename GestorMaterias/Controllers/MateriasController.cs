@@ -6,13 +6,17 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace GestorMaterias.Controllers
 {
     /// <summary>
     /// Controlador para la gestión de materias
     /// </summary>
+    [ApiController]
     [Route("[controller]")]
+    [Produces("application/json")]
+    [SwaggerTag("CRUD de Materias - Gestión completa de materias en el sistema")]
     public class MateriasController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -30,7 +34,12 @@ namespace GestorMaterias.Controllers
         /// <returns>Lista de todas las materias</returns>
         /// <response code="200">Devuelve la lista de materias</response>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [SwaggerOperation(
+            Summary = "Obtiene todas las materias",
+            Description = "Lista completa de materias disponibles",
+            OperationId = "GetMaterias",
+            Tags = new[] { "Consultar" }
+        )]
         public async Task<IActionResult> Index()
         {
             return View(await _materiaService.ObtenerTodasLasMaterias());
@@ -44,8 +53,12 @@ namespace GestorMaterias.Controllers
         /// <response code="200">Devuelve los datos de la materia solicitada</response>
         /// <response code="404">Si la materia no existe</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [SwaggerOperation(
+            Summary = "Obtiene una materia específica",
+            Description = "Retorna los detalles de una materia por su ID",
+            OperationId = "GetMateria",
+            Tags = new[] { "Consultar" }
+        )]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -107,12 +120,14 @@ namespace GestorMaterias.Controllers
         /// <response code="200">Si la materia fue creada correctamente</response>
         /// <response code="400">Si los datos proporcionados no son válidos</response>
         [HttpPost]
-        [Route("Create")]
-        [Consumes("application/json", "application/x-www-form-urlencoded")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Materia materia)
+        [SwaggerOperation(
+            Summary = "Crea una nueva materia",
+            Description = "Agrega una nueva materia al sistema",
+            OperationId = "CreateMateria",
+            Tags = new[] { "Crear" }
+        )]
+        [Consumes("application/json")]
+        public async Task<ActionResult<Materia>> PostMateria([FromBody] Materia materia)
         {
             // Validación manual simplificada
             bool isValid = true;
@@ -218,12 +233,14 @@ namespace GestorMaterias.Controllers
         /// <response code="400">Si los datos proporcionados no son válidos</response>
         /// <response code="404">Si la materia no existe</response>
         [HttpPost("Edit/{id}")]
-        [Consumes("application/json", "application/x-www-form-urlencoded")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [FromForm][Bind("Id,Nombre,Descripcion,ProfesorId")] Materia materia)
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Actualiza una materia existente",
+            Description = "Modifica los datos de una materia específica",
+            OperationId = "UpdateMateria",
+            Tags = new[] { "Actualizar" }
+        )]
+        public async Task<IActionResult> UpdateMateria(int id, [FromBody] Materia materia)
         {
             if (id != materia.Id)
             {
@@ -283,13 +300,8 @@ namespace GestorMaterias.Controllers
         // GET: Materias/Delete/5
         [HttpGet]
         [Route("Delete/{id}")]
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
             var materia = await _context.Materias
                 .Include(m => m.Profesor)
                 .Include(m => m.Registros)
