@@ -1,6 +1,7 @@
 using GestorMaterias.Data;
 using GestorMaterias.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace GestorMaterias.Services
 {
@@ -95,33 +96,57 @@ namespace GestorMaterias.Services
             if (await EmailExiste(usuario.Email))
                 return (false, "El correo electrónico ya está registrado", null);
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            
+            // Verificar si estamos usando una base de datos en memoria (para pruebas)
+            bool isInMemoryDatabase = _context.Database.ProviderName?.Contains("InMemory") == true;
+
             try
             {
-                // Guardar el estudiante primero
-                _context.Estudiantes.Add(estudiante);
-                await _context.SaveChangesAsync();
+                if (!isInMemoryDatabase)
+                {
+                    // En una base de datos real, usamos transacción
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    
+                    try
+                    {
+                        await CompletarRegistroUsuarioEstudiante(usuario, estudiante, password);
+                        await transaction.CommitAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        return (false, $"Error al registrar: {ex.Message}", null);
+                    }
+                }
+                else
+                {
+                    // En base de datos en memoria (para pruebas), sin transacción
+                    await CompletarRegistroUsuarioEstudiante(usuario, estudiante, password);
+                }
                 
-                // Preparar el usuario
-                usuario.EstudianteId = estudiante.Id;
-                usuario.Estudiante = estudiante;
-                usuario.Password = password; // En producción: aplicar hash
-                usuario.EsAdministrador = false; // Es una cuenta de estudiante
-                
-                // Guardar el usuario
-                _context.Usuarios.Add(usuario);
-                await _context.SaveChangesAsync();
-                
-                await transaction.CommitAsync();
                 return (true, "Usuario y estudiante registrados correctamente", usuario);
-                
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 return (false, $"Error al registrar: {ex.Message}", null);
             }
+        }
+
+        // Método auxiliar para evitar duplicación de código
+        private async Task CompletarRegistroUsuarioEstudiante(Usuario usuario, Estudiante estudiante, string password)
+        {
+            // Guardar el estudiante primero
+            _context.Estudiantes.Add(estudiante);
+            await _context.SaveChangesAsync();
+            
+            // Preparar el usuario
+            usuario.EstudianteId = estudiante.Id;
+            usuario.Estudiante = estudiante;
+            usuario.Password = password; // En producción: aplicar hash
+            usuario.EsAdministrador = false; // Es una cuenta de estudiante
+            
+            // Guardar el usuario
+            _context.Usuarios.Add(usuario);
+            await _context.SaveChangesAsync();
         }
     }
 }
