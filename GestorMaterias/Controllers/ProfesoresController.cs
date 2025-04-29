@@ -25,6 +25,7 @@ namespace GestorMaterias.Controllers
 
         // GET: /Profesores
         [HttpGet]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<IActionResult> Index()
         {
             var profesores = await _context.Profesores
@@ -44,6 +45,7 @@ namespace GestorMaterias.Controllers
 
         // GET: /Profesores/5
         [HttpGet("{id}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<IActionResult> Details(int id)
         {
             var profesor = await _context.Profesores
