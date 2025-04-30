@@ -277,8 +277,64 @@ namespace GestorMaterias.Services
         // Implementación de los métodos faltantes de la interfaz
         public async Task<bool> MatricularEstudiante(int estudianteId, int materiaId)
         {
-            var result = await InscribirEstudianteEnMateria(estudianteId, materiaId);
-            return result.Success;
+            try
+            {
+                // Verificar si el estudiante existe
+                var estudiante = await _context.Estudiantes.FindAsync(estudianteId);
+                if (estudiante == null)
+                {
+                    throw new Exception("El estudiante no existe");
+                }
+
+                // Verificar si la materia existe
+                var materia = await _context.Materias.Include(m => m.Profesor).FirstOrDefaultAsync(m => m.Id == materiaId);
+                if (materia == null)
+                {
+                    throw new Exception("La materia no existe");
+                }
+
+                // Verificar si ya está inscrito
+                var yaInscrito = await _context.Registros.AnyAsync(r => r.EstudianteId == estudianteId && r.MateriaId == materiaId);
+                if (yaInscrito)
+                {
+                    throw new Exception("El estudiante ya está inscrito en esta materia");
+                }
+
+                // Verificar límite de materias
+                var materiasInscritas = await _context.Registros.CountAsync(r => r.EstudianteId == estudianteId);
+                if (materiasInscritas >= 3)
+                {
+                    throw new Exception("El estudiante ya tiene el máximo de materias permitidas (3)");
+                }
+
+                // Verificar profesor
+                if (materia.ProfesorId != null)
+                {
+                    var tieneProfesor = await _context.Registros
+                        .Include(r => r.Materia)
+                        .AnyAsync(r => r.EstudianteId == estudianteId && r.Materia.ProfesorId == materia.ProfesorId);
+                    
+                    if (tieneProfesor)
+                    {
+                        throw new Exception("El estudiante ya tiene una materia con este profesor");
+                    }
+                }
+
+                var registro = new Registro
+                {
+                    EstudianteId = estudianteId,
+                    MateriaId = materiaId
+                };
+
+                _context.Registros.Add(registro);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al matricular: {ex.Message}");
+                return false;
+            }
         }
         
         public async Task<bool> CancelarMatricula(int estudianteId, int materiaId)
