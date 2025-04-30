@@ -50,35 +50,29 @@ namespace GestorMaterias.Controllers
                 return NotFound();
             }
 
-            // Obtener las materias inscritas por el estudiante incluyendo información del profesor
             var registros = await _context.Registros
                 .Where(r => r.EstudianteId == id)
                 .Include(r => r.Materia)
                 .ThenInclude(m => m.Profesor)
                 .ToListAsync();
 
-            var materias = registros.Select(r => new
-            {
-                id = r.Materia.Id,
-                nombre = r.Materia.Nombre,
-                descripcion = r.Materia.Descripcion,
-                creditos = r.Materia.Creditos,
-                profesor = r.Materia.Profesor != null ? new
-                {
-                    id = r.Materia.Profesor.Id,
-                    nombre = r.Materia.Profesor.Nombre
-                } : null
-            }).ToList();
-
             return new
             {
-                estudiante = new
+                id = estudiante.Id,
+                nombre = estudiante.Nombre,
+                email = estudiante.Email,
+                materias = registros.Select(r => new
                 {
-                    id = estudiante.Id,
-                    nombre = estudiante.Nombre,
-                    email = estudiante.Email
-                },
-                materias = materias
+                    id = r.Materia.Id,
+                    nombre = r.Materia.Nombre,
+                    descripcion = r.Materia.Descripcion,
+                    creditos = r.Materia.Creditos,
+                    profesor = r.Materia.Profesor != null ? new
+                    {
+                        id = r.Materia.Profesor.Id,
+                        nombre = r.Materia.Profesor.Nombre
+                    } : null
+                }).ToList()
             };
         }
 
