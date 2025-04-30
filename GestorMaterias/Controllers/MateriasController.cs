@@ -1,351 +1,188 @@
-using GestorMaterias.Data;
 using GestorMaterias.Models;
 using GestorMaterias.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace GestorMaterias.Controllers
 {
-    /// <summary>
-    /// Controlador para la gestión de materias
-    /// </summary>
-    [ApiController]
     [Route("[controller]")]
+    [ApiController]
     [Produces("application/json")]
-    [SwaggerTag("CRUD de Materias - Gestión completa de materias en el sistema")]
-    public class MateriasController : Controller
+    public class MateriasController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
         private readonly IMateriaService _materiaService;
+        private readonly IProfesorService _profesorService;
 
-        public MateriasController(ApplicationDbContext context, IMateriaService materiaService)
+        //    public MateriasController(IMateriaService materiaService)
+        //     {
+        //         _materiaService = materiaService;
+        //         //_profesorService = profesorService;
+        //     }
+
+        public MateriasController(IMateriaService materiaService, IProfesorService profesorService)
         {
-            _context = context;
             _materiaService = materiaService;
+            _profesorService = profesorService;
         }
 
-        /// <summary>
-        /// Obtiene todas las materias
-        /// </summary>
-        /// <returns>Lista de todas las materias</returns>
-        /// <response code="200">Devuelve la lista de materias</response>
+        // GET: /Materias
         [HttpGet]
-        [SwaggerOperation(
-            Summary = "Obtiene todas las materias",
-            Description = "Lista completa de materias disponibles",
-            OperationId = "GetMaterias",
-            Tags = new[] { "Consultar" }
-        )]
         public async Task<IActionResult> Index()
         {
-            return View(await _materiaService.ObtenerTodasLasMaterias());
+            try
+            {
+                var materias = await _materiaService.ObtenerMateriasParaAPI();
+                return Ok(materias);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error al obtener materias: {ex.Message}" });
+            }
         }
 
-        /// <summary>
-        /// Obtiene los detalles de una materia por su ID
-        /// </summary>
-        /// <param name="id">ID de la materia</param>
-        /// <returns>Datos de la materia solicitada</returns>
-        /// <response code="200">Devuelve los datos de la materia solicitada</response>
-        /// <response code="404">Si la materia no existe</response>
+        // GET: /Materias/5
         [HttpGet("{id}")]
-        [SwaggerOperation(
-            Summary = "Obtiene una materia específica",
-            Description = "Retorna los detalles de una materia por su ID",
-            OperationId = "GetMateria",
-            Tags = new[] { "Consultar" }
-        )]
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(int id)
         {
-            if (id == null)
+            try
             {
-                return NotFound();
-            }
-
-            var materia = await _materiaService.ObtenerMateriaPorId(id.Value);
-            if (materia == null)
-            {
-                return NotFound();
-            }
-
-            // Obtener estudiantes inscritos en la materia
-            var registros = await _context.Registros
-                .Include(r => r.Estudiante)
-                .Where(r => r.MateriaId == id)
-                .ToListAsync();
-
-            ViewBag.Estudiantes = registros.Select(r => r.Estudiante).ToList();
-
-            return View(materia);
-        }
-
-        /// <summary>
-        /// Muestra el formulario para crear una nueva materia
-        /// </summary>
-        /// <returns>Vista para crear una materia</returns>
-        [HttpGet("Create")]
-        public async Task<IActionResult> Create()
-        {
-            // Obtener solo profesores que pueden impartir más materias (menos de 2)
-            var profesores = await _context.Profesores.ToListAsync();
-            var profesoresDisponibles = new List<Profesor>();
-            
-            foreach (var profesor in profesores)
-            {
-                if (await _materiaService.ProfesorPuedeImpartirMasMateria(profesor.Id))
+                var materia = await _materiaService.ObtenerMateriaPorIdParaAPI(id);
+                if (materia == null)
                 {
-                    profesoresDisponibles.Add(profesor);
+                    return NotFound(new { message = "Materia no encontrada" });
                 }
+                return Ok(materia);
             }
-            
-            // Si no hay profesores disponibles, agregar un mensaje de advertencia
-            if (profesoresDisponibles.Count == 0)
+            catch (Exception ex)
             {
-                TempData["MensajeError"] = "No hay profesores disponibles para asignar a la materia. Cada profesor solo puede impartir un máximo de 2 materias.";
+                return StatusCode(500, new { message = $"Error al obtener los detalles de la materia: {ex.Message}" });
             }
-            
-            ViewBag.Profesores = new SelectList(profesoresDisponibles, "Id", "Nombre");
-            return View();
         }
 
-        /// <summary>
-        /// Crea una nueva materia
-        /// </summary>
-        /// <param name="materia">Datos de la materia a crear</param>
-        /// <returns>Redirección a la lista de materias si es exitoso</returns>
-        /// <response code="200">Si la materia fue creada correctamente</response>
-        /// <response code="400">Si los datos proporcionados no son válidos</response>
+        // POST: /Materias
         [HttpPost]
-        [SwaggerOperation(
-            Summary = "Crea una nueva materia",
-            Description = "Agrega una nueva materia al sistema",
-            OperationId = "CreateMateria",
-            Tags = new[] { "Crear" }
-        )]
-        [Consumes("application/json")]
-        public async Task<ActionResult<Materia>> PostMateria([FromBody] Materia materia)
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> Create([FromBody] Materia materia)
         {
-            // Validación manual simplificada
-            bool isValid = true;
-            
-            if (string.IsNullOrEmpty(materia.Nombre))
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("Nombre", "El nombre de la materia es requerido");
-                isValid = false;
-            }
-            
-            if (string.IsNullOrEmpty(materia.Descripcion))
-            {
-                ModelState.AddModelError("Descripcion", "La descripción de la materia es requerida");
-                isValid = false;
-            }
-            
-            if (materia.ProfesorId <= 0)
-            {
-                ModelState.AddModelError("ProfesorId", "Debe seleccionar un profesor");
-                isValid = false;
-            }
-
-            if (isValid)
-            {
-                var resultado = await _materiaService.CrearMateria(materia);
-                if (resultado.Success)
-                {
-                    TempData["Mensaje"] = resultado.Message;
-                    return RedirectToAction(nameof(Index));
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, resultado.Message);
-                }
-            }
-
-            // Recargar lista de profesores
-            var profesores = await _context.Profesores.ToListAsync();
-            var profesoresDisponibles = new List<Profesor>();
-            
-            foreach (var profesor in profesores)
-            {
-                if (await _materiaService.ProfesorPuedeImpartirMasMateria(profesor.Id))
-                {
-                    profesoresDisponibles.Add(profesor);
-                }
-            }
-            
-            ViewBag.Profesores = new SelectList(profesoresDisponibles, "Id", "Nombre", materia.ProfesorId);
-            return View(materia);
-        }
-
-        /// <summary>
-        /// Muestra el formulario para editar una materia existente
-        /// </summary>
-        /// <param name="id">ID de la materia a editar</param>
-        /// <returns>Vista para editar la materia</returns>
-        /// <response code="200">Devuelve la vista de edición</response>
-        /// <response code="404">Si la materia no existe</response>
-        [HttpGet("Edit/{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var materia = await _materiaService.ObtenerMateriaPorId(id.Value);
-            if (materia == null)
-            {
-                return NotFound();
-            }
-
-            // Obtener profesores para el dropdown
-            var profesores = await _context.Profesores.ToListAsync();
-            var profesoresDisponibles = new List<Profesor>();
-            
-            // Incluir el profesor actual de la materia
-            profesoresDisponibles.Add(materia.Profesor);
-            
-            // Añadir otros profesores que puedan impartir más materias
-            foreach (var profesor in profesores)
-            {
-                if (profesor.Id != materia.ProfesorId && await _materiaService.ProfesorPuedeImpartirMasMateria(profesor.Id))
-                {
-                    profesoresDisponibles.Add(profesor);
-                }
-            }
-            
-            ViewBag.Profesores = new SelectList(profesoresDisponibles.Distinct(), "Id", "Nombre", materia.ProfesorId);
-            return View(materia);
-        }
-
-        /// <summary>
-        /// Edita una materia existente
-        /// </summary>
-        /// <param name="id">ID de la materia a editar</param>
-        /// <param name="materia">Datos actualizados de la materia</param>
-        /// <returns>Redirección a la lista de materias si es exitoso</returns>
-        /// <response code="200">Si la materia fue actualizada correctamente</response>
-        /// <response code="400">Si los datos proporcionados no son válidos</response>
-        /// <response code="404">Si la materia no existe</response>
-        [HttpPost("Edit/{id}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Actualiza una materia existente",
-            Description = "Modifica los datos de una materia específica",
-            OperationId = "UpdateMateria",
-            Tags = new[] { "Actualizar" }
-        )]
-        public async Task<IActionResult> UpdateMateria(int id, [FromBody] Materia materia)
-        {
-            if (id != materia.Id)
-            {
-                return NotFound();
+                return BadRequest(ModelState);
             }
 
             try
             {
-                // Obtener la materia existente para actualizarla
-                var materiaExistente = await _context.Materias.FindAsync(id);
+                var resultado = await _materiaService.CrearMateria(materia);
                 
-                if (materiaExistente == null)
+                if (resultado.Success)
                 {
-                    return NotFound();
+                    return CreatedAtAction(nameof(Details), new { id = materia.Id }, materia);
                 }
-
-                // Actualizar los campos
-                materiaExistente.Nombre = materia.Nombre;
-                materiaExistente.Descripcion = materia.Descripcion;
-                materiaExistente.ProfesorId = materia.ProfesorId;
-
-                // Guardar cambios
-                await _context.SaveChangesAsync();
                 
-                TempData["Mensaje"] = "Materia actualizada correctamente.";
-                return RedirectToAction(nameof(Index));
+                return BadRequest(new { message = resultado.Message });
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, $"Error al actualizar: {ex.Message}");
+                return StatusCode(500, new { message = $"Error al crear la materia: {ex.Message}" });
             }
-
-            // Recargar profesores en caso de error
-            var profesores = await _context.Profesores.ToListAsync();
-            var profesoresDisponibles = new List<Profesor>();
-            
-            // Incluir el profesor actual
-            var profesorActual = await _context.Profesores.FindAsync(materia.ProfesorId);
-            if (profesorActual != null)
-            {
-                profesoresDisponibles.Add(profesorActual);
-            }
-            
-            // Añadir otros profesores que pueden impartir más materias
-            foreach (var profesor in profesores)
-            {
-                if (profesor.Id != materia.ProfesorId && await _materiaService.ProfesorPuedeImpartirMasMateria(profesor.Id))
-                {
-                    profesoresDisponibles.Add(profesor);
-                }
-            }
-            
-            ViewBag.Profesores = new SelectList(profesoresDisponibles.Distinct(), "Id", "Nombre", materia.ProfesorId);
-            return View(materia);
         }
 
-        // GET: Materias/Delete/5
-        [HttpGet]
-        [Route("Delete/{id}")]
+        // PUT: /Materias/5
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> Edit(int id, [FromBody] Materia materia)
+        {
+            if (id != materia.Id)
+            {
+                return BadRequest(new { message = "El ID de la materia no coincide" });
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var resultado = await _materiaService.ActualizarMateria(materia);
+                
+                if (resultado.Success)
+                {
+                    return NoContent();
+                }
+                
+                return BadRequest(new { message = resultado.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error al actualizar la materia: {ex.Message}" });
+            }
+        }
+
+        // DELETE: /Materias/5
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> Delete(int id)
         {
-            var materia = await _context.Materias
-                .Include(m => m.Profesor)
-                .Include(m => m.Registros)
-                .ThenInclude(r => r.Estudiante)
-                .FirstOrDefaultAsync(m => m.Id == id);
-                
-            if (materia == null)
+            try
             {
-                return NotFound();
+                var resultado = await _materiaService.EliminarMateria(id);
+                
+                if (resultado.Success)
+                {
+                    return NoContent();
+                }
+                
+                return BadRequest(new { message = resultado.Message });
             }
-
-            // Para la vista necesitamos obtener los estudiantes de la materia
-            //materia.Estudiantes = materia.Registros?.Select(r => r.Estudiante).ToList() ?? new List<Estudiante>();
-
-            return View(materia);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error al eliminar la materia: {ex.Message}" });
+            }
         }
 
-        // POST: Materias/Delete/5
-        [HttpPost]
-        [Route("Delete/{id}")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        // GET: /Materias/Profesores
+        [HttpGet("Profesores")]
+        public async Task<IActionResult> GetProfesores()
         {
-            var materia = await _context.Materias
-                .Include(m => m.Profesor)
-                .Include(m => m.Registros)
-                .FirstOrDefaultAsync(m => m.Id == id);
-                
-            if (materia == null)
+            try
             {
-                return NotFound();
+                var profesores = await _profesorService.ObtenerTodosProfesores();
+                return Ok(profesores.Select(p => new 
+                {
+                    Id = p.Id,
+                    Nombre = p.Nombre,
+                    //Apellido = p.Apellido,
+                    NombreCompleto = $"{p.Nombre}"
+                }));
             }
-
-            // Verificar si la materia tiene estudiantes matriculados o profesor asignado
-            if ((materia.Registros != null && materia.Registros.Any()) || materia.Profesor != null)
+            catch (Exception ex)
             {
-                TempData["Error"] = "No se puede eliminar la materia porque tiene estudiantes matriculados o un profesor asignado.";
-                return RedirectToAction(nameof(Delete), new { id = id });
+                return StatusCode(500, new { message = $"Error al obtener profesores: {ex.Message}" });
             }
+        }
 
-            _context.Materias.Remove(materia);
-            await _context.SaveChangesAsync();
-            TempData["Mensaje"] = "Materia eliminada correctamente.";
-            return RedirectToAction(nameof(Index));
+        // GET: /Materias/Profesor/5
+        [HttpGet("Profesor/{profesorId}")]
+        public async Task<IActionResult> GetMateriasPorProfesor(int profesorId)
+        {
+            try
+            {
+                var materias = await _materiaService.ObtenerMateriasPorProfesor(profesorId);
+                return Ok(materias.Select(m => new
+                {
+                    Id = m.Id,
+                    Nombre = m.Nombre,
+                    Descripcion = m.Descripcion,
+                    Creditos = m.Creditos,
+                    CantidadEstudiantes = m.Registros?.Count(r => r.Estado == "Activo") ?? 0
+                }));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error al obtener materias del profesor: {ex.Message}" });
+            }
         }
     }
+
+
 }

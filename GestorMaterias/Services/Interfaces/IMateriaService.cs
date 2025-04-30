@@ -6,6 +6,8 @@ namespace GestorMaterias.Services
     {
         Task<List<Materia>> ObtenerTodasLasMaterias();
         Task<Materia> ObtenerMateriaPorId(int id);
+        Task<List<object>> ObtenerMateriasParaAPI();
+        Task<object> ObtenerMateriaPorIdParaAPI(int id);
         Task<List<Materia>> ObtenerMateriasPorProfesor(int profesorId);
         Task<(bool Success, string Message)> CrearMateria(Materia materia);
         Task<(bool Success, string Message)> ActualizarMateria(Materia materia);

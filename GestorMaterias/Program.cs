@@ -1,108 +1,110 @@
 using GestorMaterias.Data;
+using GestorMaterias.Models;
 using GestorMaterias.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using System.Text;
-using System.Reflection;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
-
-// Configuración de la base de datos
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+                      ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "defaultKeyForDevelopment12345678901234"))
+        };
+    });
+
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+// Configurar la serialización JSON para manejar referencias cíclicas
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 
 // Registrar servicios
-builder.Services.AddScoped<IUsuarioService, UsuarioService>();
-builder.Services.AddScoped<IRegistroService, RegistroService>();
+// Importante: asegurar que estos servicios estén correctamente registrados
 builder.Services.AddScoped<IMateriaService, MateriaService>();
+builder.Services.AddScoped<IProfesorService, ProfesorService>();
+//builder.Services.AddScoped<IEstudianteService, EstudianteService>();
+//builder.Services.AddScoped<IRegistroMateriaService, RegistroMateriaService>();
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+//builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Configuración de autenticación (Cookies + JWT Bearer)
-builder.Services.AddAuthentication(options =>
+// Configurar CORS para permitir solicitudes desde la aplicación Angular
+builder.Services.AddCors(options =>
 {
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-    options.LoginPath = "/Account/Login";
-    options.LogoutPath = "/Account/Logout";
-    options.AccessDeniedPath = "/Account/AccessDenied";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.ExpireTimeSpan = TimeSpan.FromHours(3);
-})
-.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
-    };
-});
-
-// Configuración básica de Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Materias API",
-        Version = "v1"
-    });
-    
-    // Resolver conflictos de rutas tomando la primera acción que encuentre
-    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
-    
-    // Filtrar para mostrar solo el controlador de Materias
-    c.DocInclusionPredicate((docName, apiDesc) =>
-    {
-        if (apiDesc.ActionDescriptor.RouteValues.TryGetValue("controller", out var controllerName))
+    options.AddPolicy("AllowAngularApp",
+        builder =>
         {
-            return controllerName.Equals("Materias", StringComparison.OrdinalIgnoreCase);
-        }
-        return false;
-    });
+            builder.WithOrigins("http://localhost:4200") // URL de tu aplicación Angular
+                   .AllowAnyMethod()
+                   .AllowAnyHeader()
+                   .AllowCredentials();
+        });
 });
+
+builder.Services.AddControllersWithViews();
+
+// Agregar soporte para Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configurar el pipeline HTTP
+// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseMigrationsEndPoint();
     app.UseDeveloperExceptionPage();
+    
+    // Habilitar Swagger en desarrollo
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
-
-// Usar Swagger siempre
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+else
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Materias API v1");
-});
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
 
-// Añadir Authentication middleware antes de Authorization
+// Habilitar CORS
+app.UseCors("AllowAngularApp");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapControllers(); // Asegurarse de que los controladores de API se mapeen correctamente
 
 app.Run();

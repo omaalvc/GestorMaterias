@@ -1,33 +1,51 @@
 using GestorMaterias.Data;
 using GestorMaterias.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Logging;
 
 namespace GestorMaterias.Services
 {
     public class UsuarioService : IUsuarioService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<UsuarioService> _logger;
 
-        public UsuarioService(ApplicationDbContext context)
+        public UsuarioService(ApplicationDbContext context, ILogger<UsuarioService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<(bool success, string message, Usuario? usuario)> ValidarCredenciales(string username, string password)
         {
-            // En un sistema real, usaríamos hashing para las contraseñas
-            var usuario = await _context.Usuarios
-                .Include(u => u.Estudiante)
-                .FirstOrDefaultAsync(u => u.Username == username);
+            _logger.LogInformation($"Validando credenciales para el usuario: {username}");
 
-            if (usuario == null)
-                return (false, "Usuario no encontrado", null);
+            try
+            {
+                var usuario = await _context.Usuarios
+                    .FirstOrDefaultAsync(u => u.Username == username);
 
-            if (usuario.Password != password) // En producción: verificar hash
-                return (false, "Contraseña incorrecta", null);
+                if (usuario == null)
+                {
+                    _logger.LogWarning($"Usuario no encontrado: {username}");
+                    return (false, "Usuario no encontrado", null);
+                }
 
-            return (true, "Inicio de sesión exitoso", usuario);
+                // Comprobar si la contraseña coincide
+                if (usuario.Password != password)
+                {
+                    _logger.LogWarning($"Contraseña incorrecta para el usuario: {username}");
+                    return (false, "Credenciales inválidas", null);
+                }
+
+                _logger.LogInformation($"Credenciales validadas correctamente para el usuario: {username}");
+                return (true, "Autenticación exitosa", usuario);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error al validar credenciales para el usuario: {username}");
+                return (false, $"Error en el servidor: {ex.Message}", null);
+            }
         }
 
         public async Task<(bool success, string message, Usuario? usuario)> RegistrarUsuario(Usuario usuario, string password, bool isStudentAccount = true)
@@ -41,8 +59,9 @@ namespace GestorMaterias.Services
                 return (false, "El correo electrónico ya está registrado", null);
 
             // En un sistema real, hashearíamos la contraseña
-            usuario.Password = password; // Almacenar directamente para este ejemplo
-            usuario.EsAdministrador = !isStudentAccount; // Por defecto, los nuevos usuarios son estudiantes
+            usuario.Password = password; // Para implementación segura, usar un hash
+            usuario.EsAdministrador = !isStudentAccount; 
+            usuario.FechaRegistro = DateTime.Now;
 
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
@@ -54,6 +73,7 @@ namespace GestorMaterias.Services
         {
             return await _context.Usuarios
                 .Include(u => u.Estudiante)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
@@ -61,6 +81,7 @@ namespace GestorMaterias.Services
         {
             return await _context.Usuarios
                 .Include(u => u.Estudiante)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
         }
 
@@ -143,6 +164,7 @@ namespace GestorMaterias.Services
             usuario.Estudiante = estudiante;
             usuario.Password = password; // En producción: aplicar hash
             usuario.EsAdministrador = false; // Es una cuenta de estudiante
+            usuario.FechaRegistro = DateTime.Now;
             
             // Guardar el usuario
             _context.Usuarios.Add(usuario);
