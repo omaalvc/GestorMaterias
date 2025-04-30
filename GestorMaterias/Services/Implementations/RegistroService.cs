@@ -1,6 +1,10 @@
 using GestorMaterias.Data;
 using GestorMaterias.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace GestorMaterias.Services
 {
@@ -13,7 +17,15 @@ namespace GestorMaterias.Services
             _context = context;
         }
 
-        // Verifica si un estudiante puede inscribirse a una materia
+        public async Task<List<Registro>> ObtenerRegistrosPorEstudiante(int estudianteId)
+        {
+            return await _context.Registros
+                .Include(r => r.Materia)
+                .Include(r => r.Estudiante)
+                .Where(r => r.EstudianteId == estudianteId)
+                .ToListAsync();
+        }
+
         public async Task<bool> PuedeInscribirseAMateria(int estudianteId, int materiaId)
         {
             // Obtener estudiante con sus registros
@@ -43,13 +55,12 @@ namespace GestorMaterias.Services
                 return false;
 
             // Verificar si ya tiene una materia con el mismo profesor
-            if (estudiante.Registros.Any(r => r.Materia.ProfesorId == materia.ProfesorId))
+            if (materia.ProfesorId > 0 && estudiante.Registros.Any(r => r.Materia.ProfesorId == materia.ProfesorId))
                 return false;
 
             return true;
         }
 
-        // Inscribe un estudiante a una materia si cumple las condiciones
         public async Task<(bool Success, string Message)> InscribirEstudianteAMateria(int estudianteId, int materiaId)
         {
             // Primero verificar si puede inscribirse
@@ -67,7 +78,7 @@ namespace GestorMaterias.Services
                     .Include(m => m.Profesor)
                     .FirstOrDefaultAsync(m => m.Id == materiaId);
 
-                if (await EstudianteTieneMismoProfesor(estudianteId, materia.ProfesorId))
+                if (materia != null && materia.ProfesorId > 0 && await EstudianteTieneMismoProfesor(estudianteId, materia.ProfesorId))
                     return (false, "El estudiante ya tiene una materia con el mismo profesor.");
                 
                 return (false, "No se pudo realizar la inscripción.");
@@ -78,8 +89,7 @@ namespace GestorMaterias.Services
             {
                 EstudianteId = estudianteId,
                 MateriaId = materiaId,
-                FechaInscripcion = DateTime.Now,
-                Estado = "Activo"
+                //FechaRegistro = DateTime.Now
             };
 
             _context.Registros.Add(registro);
@@ -88,7 +98,6 @@ namespace GestorMaterias.Services
             return (true, "Inscripción realizada correctamente.");
         }
 
-        // Obtiene las materias inscritas por un estudiante
         public async Task<List<Materia>> ObtenerMateriasInscritasEstudiante(int estudianteId)
         {
             return await _context.Registros
@@ -97,7 +106,6 @@ namespace GestorMaterias.Services
                 .ToListAsync();
         }
 
-        // Obtiene los estudiantes inscritos en una materia
         public async Task<List<Estudiante>> ObtenerEstudiantesPorMateria(int materiaId)
         {
             return await _context.Registros
@@ -106,17 +114,6 @@ namespace GestorMaterias.Services
                 .ToListAsync();
         }
 
-        // Obtiene los registros (inscripciones) de un estudiante
-        public async Task<List<Registro>> ObtenerRegistrosPorEstudiante(int estudianteId)
-        {
-            return await _context.Registros
-                .Where(r => r.EstudianteId == estudianteId && r.Estado == "Activo")
-                .Include(r => r.Materia)
-                    .ThenInclude(m => m.Profesor)
-                .ToListAsync();
-        }
-
-       // Elimina una inscripción existente
         public async Task<(bool Success, string Message)> EliminarInscripcion(int registroId)
         {
             var registro = await _context.Registros.FindAsync(registroId);
@@ -129,6 +126,14 @@ namespace GestorMaterias.Services
             return (true, "Inscripción eliminada correctamente.");
         }
 
+        public async Task<bool> EstudianteTieneMismoProfesor(int estudianteId, int profesorId)
+        {
+            return await _context.Registros
+                .Where(r => r.EstudianteId == estudianteId)
+                .Include(r => r.Materia)
+                .AnyAsync(r => r.Materia.ProfesorId == profesorId);
+        }
+
         public async Task<List<Registro>> ObtenerTodosLosRegistros()
         {
             return await _context.Registros
@@ -136,15 +141,6 @@ namespace GestorMaterias.Services
                 .Include(r => r.Materia)
                     .ThenInclude(m => m.Profesor)
                 .ToListAsync();
-        }
-
-                // Verifica si un estudiante ya tiene materias con un profesor específico
-        public async Task<bool> EstudianteTieneMismoProfesor(int estudianteId, int profesorId)
-        {
-            return await _context.Registros
-                .Where(r => r.EstudianteId == estudianteId)
-                .Include(r => r.Materia)
-                .AnyAsync(r => r.Materia.ProfesorId == profesorId);
         }
 
         public async Task<OperationResult> InscribirEstudianteEnMateria(int estudianteId, int materiaId)
@@ -170,7 +166,7 @@ namespace GestorMaterias.Services
 
                 // Verificar si ya está inscrito en esta materia
                 var registroExistente = await _context.Registros
-                    .AnyAsync(r => r.EstudianteId == estudianteId && r.MateriaId == materiaId && r.Estado == "Activo");
+                    .AnyAsync(r => r.EstudianteId == estudianteId && r.MateriaId == materiaId);
                 
                 if (registroExistente)
                 {
@@ -179,7 +175,7 @@ namespace GestorMaterias.Services
 
                 // Verificar cuántas materias tiene inscritas el estudiante
                 var materiasInscritas = await _context.Registros
-                    .CountAsync(r => r.EstudianteId == estudianteId && r.Estado == "Activo");
+                    .CountAsync(r => r.EstudianteId == estudianteId);
                 
                 if (materiasInscritas >= 3)
                 {
@@ -192,7 +188,6 @@ namespace GestorMaterias.Services
                     var yaInscritoConProfesor = await _context.Registros
                         .Include(r => r.Materia)
                         .AnyAsync(r => r.EstudianteId == estudianteId && 
-                                        r.Estado == "Activo" && 
                                         r.Materia.ProfesorId == materia.ProfesorId);
                     
                     if (yaInscritoConProfesor)
@@ -206,8 +201,7 @@ namespace GestorMaterias.Services
                 {
                     EstudianteId = estudianteId,
                     MateriaId = materiaId,
-                    FechaInscripcion = DateTime.Now,
-                    Estado = "Activo"
+                    //FechaRegistro = DateTime.Now
                 };
 
                 _context.Registros.Add(nuevoRegistro);
@@ -234,11 +228,10 @@ namespace GestorMaterias.Services
                     return new OperationResult { Success = false, Message = "El registro no existe" };
                 }
 
-                // Cambiar estado a cancelado
-                registro.Estado = "Cancelado";
-
+                _context.Registros.Remove(registro);
                 await _context.SaveChangesAsync();
-                return new OperationResult { Success = true, Message = $"Inscripción a {registro.Materia.Nombre} cancelada con éxito" };
+                
+                return new OperationResult { Success = true, Message = $"Inscripción cancelada con éxito" };
             }
             catch (Exception ex)
             {
@@ -257,13 +250,13 @@ namespace GestorMaterias.Services
 
             // Obtener las materias en las que ya está inscrito
             var materiasInscritas = await _context.Registros
-                .Where(r => r.EstudianteId == estudianteId && r.Estado == "Activo")
+                .Where(r => r.EstudianteId == estudianteId)
                 .Select(r => r.MateriaId)
                 .ToListAsync();
 
             // Obtener los profesores con los que ya tiene materias
             var profesoresConMaterias = await _context.Registros
-                .Where(r => r.EstudianteId == estudianteId && r.Estado == "Activo")
+                .Where(r => r.EstudianteId == estudianteId)
                 .Join(_context.Materias.Where(m => m.ProfesorId != null),
                       r => r.MateriaId,
                       m => m.Id,
@@ -280,11 +273,34 @@ namespace GestorMaterias.Services
 
             return materiasDisponibles;
         }
-    }
-
-    public class OperationResult
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; }
+        
+        // Implementación de los métodos faltantes de la interfaz
+        public async Task<bool> MatricularEstudiante(int estudianteId, int materiaId)
+        {
+            var result = await InscribirEstudianteEnMateria(estudianteId, materiaId);
+            return result.Success;
+        }
+        
+        public async Task<bool> CancelarMatricula(int estudianteId, int materiaId)
+        {
+            var registro = await _context.Registros
+                .FirstOrDefaultAsync(r => r.EstudianteId == estudianteId && r.MateriaId == materiaId);
+                
+            if (registro == null)
+                return false;
+                
+            var result = await CancelarInscripcion(registro.Id);
+            return result.Success;
+        }
+        
+        public async Task<List<Materia>> GetMateriasEstudiante(int estudianteId)
+        {
+            return await ObtenerMateriasInscritasEstudiante(estudianteId);
+        }
+        
+        public async Task<List<Materia>> GetMateriasDisponibles(int estudianteId)
+        {
+            return await ObtenerMateriasDisponiblesParaEstudiante(estudianteId);
+        }
     }
 }

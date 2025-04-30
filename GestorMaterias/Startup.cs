@@ -1,10 +1,13 @@
 using GestorMaterias.Data;
 using GestorMaterias.Models;
 using GestorMaterias.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
 namespace GestorMaterias
@@ -35,25 +38,9 @@ namespace GestorMaterias
                         .WithExposedHeaders("Content-Disposition"));
             });
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = Configuration["Jwt:Issuer"],
-                        ValidAudience = Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"]))
-                    };
-                });
-
-            // Servicios de la aplicación
+            // Registrar servicios explícitamente
             services.AddScoped<IUsuarioService, UsuarioService>();
-            services.AddScoped<IMateriaService, MateriaService>();
-            //services.AddScoped<IEstudianteService, EstudianteService>();
+            services.AddScoped<IRegistroService, RegistroService>();
 
             services.AddControllers()
                 .AddJsonOptions(options =>

@@ -50,7 +50,7 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<IMateriaService, MateriaService>();
 builder.Services.AddScoped<IProfesorService, ProfesorService>();
 //builder.Services.AddScoped<IEstudianteService, EstudianteService>();
-//builder.Services.AddScoped<IRegistroMateriaService, RegistroMateriaService>();
+builder.Services.AddScoped<IRegistroService, RegistroService>(); // Register IRegistroService
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 //builder.Services.AddScoped<IAuthService, AuthService>();
 
